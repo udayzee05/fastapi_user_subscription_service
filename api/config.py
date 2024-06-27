@@ -14,8 +14,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    RAZORPAY_KEY_ID: str
-    RAZORPAY_KEY_SECRET: str
+    RAZORPAY_API_KEY: str
+    RAZORPAY_SECRET_KEY: str
+    RAZORPAY_WEBHOOK_SECRET: str
     MAIL_USERNAME: str
     MAIL_PASSWORD: str
     MAIL_FROM: str

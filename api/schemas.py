@@ -1,7 +1,7 @@
 import motor.motor_asyncio
 from pydantic import BaseModel, Field, EmailStr
 from bson import ObjectId
-from typing import Any, Optional
+from typing import Any, Optional,List
 from pydantic_core import core_schema, CoreSchema
 from pydantic.json_schema import GetJsonSchemaHandler, JsonSchemaValue
 from pydantic import GetCoreSchemaHandler
@@ -87,7 +87,7 @@ class User(BaseModel):
     name: str
     email: EmailStr
     password: str
-    role: str =Field(default="user")
+    role: str =Field(default="admin")
 
     class Config:
         populate_by_name = True
@@ -106,7 +106,7 @@ class UserResponse(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     name: str
     email: EmailStr
-    role: str = Field(default="user")
+    role: str = Field(default="admin")
 
 
     class Config:
@@ -123,11 +123,12 @@ class UserResponse(BaseModel):
 
 
 class ObjectCount(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     object_count: int
     timestamp: datetime
     original_image_url: str   # s3 url
     processed_image_url: str  # s3 url
-    user_id: PyObjectId       # User ID who is going to count
+    user_id: PyObjectId   # User ID who is going to count
 
     class Config:
         populate_by_name = True
@@ -163,6 +164,46 @@ class ObjectCountResponse(BaseModel):
                 }
             }
         }
+# Subscription Collection
+# class Subscription(BaseModel):
+#     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+#     userId: PyObjectId
+#     plan: str
+#     status: str
+#     startDate: datetime
+#     endDate: datetime
+#     paymentId: PyObjectId
+
+#     class Config:
+#         populate_by_name = True
+#         arbitrary_types_allowed = True
+#         json_encoders = {ObjectId: str}
+#         json_schema_extra = {
+#             "example": {
+#                 "userId": "60d0fe4f5311236168a109ca",
+#                 "plan": "premium",
+#                 "status": "active",
+#                 "startDate": "2023-01-01T00:00:00Z",
+#                 "endDate": "2024-01-01T00:00:00Z",
+#                 "paymentId": "60d0fe4f5311236168a109cc"
+#             }
+#         }from pydantic import BaseModel, Field
+
+
+class Subscription(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    user_id: str
+    order_id: str
+    subscription_type: str
+    amount: int
+    status: str = "pending"
+    start_date: datetime = None
+    end_date: datetime = None
+
+    class Config:
+        populate_by_name = True
+        json_encoders = {ObjectId: str}
+
 
 
 class Token(BaseModel):
@@ -177,3 +218,6 @@ class PasswordResetRequest(BaseModel):
 
 class PasswordReset(BaseModel):
     password: str
+
+class CountRequest(BaseModel):
+    base64_image: str

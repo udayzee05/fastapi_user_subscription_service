@@ -3,9 +3,9 @@ import logging
 
 from fastapi import Depends, Request, HTTPException
 
-from ..schemas import User, db,ObjectCount,ObjectCountResponse
+from ..schemas import User, db,ObjectCount,ObjectCountResponse,CountRequest
 from ..oauth2 import get_current_user
-from pydantic import BaseModel
+
 from PIL import Image
 import cv2
 import base64
@@ -14,7 +14,7 @@ from datetime import datetime,timedelta
 import os
 from api.NonTelescopicPipe import count_objects_with_yolo
 from api.aws import AWSConfig
-from api.system_logger import log_request_stats as log_system_stats
+from api.system_logger import log_request_stats
 from fastapi import APIRouter
 
 
@@ -61,8 +61,6 @@ async def save_base64_image(base64_str):
 
     return original_image_url
 
-class CountRequest(BaseModel):
-    base64_image: str
 
 async def get_current_admin_user(user: dict = Depends(get_current_user)):
     if not isinstance(user, User):
@@ -75,7 +73,6 @@ async def get_current_admin_user(user: dict = Depends(get_current_user)):
 
 @router.post("/count-with-yolo")
 async def count_with_yolo(
-    request: Request,
     count_request: CountRequest,
     admin: User = Depends(get_current_admin_user),
 ):
@@ -106,7 +103,7 @@ async def count_with_yolo(
         timestamp=current_ist_datetime,
         original_image_url=original_image_url,
         processed_image_url=processed_image_url,
-        user_id=admin.id
+        user_id=admin.id,
     )
 
     # Save the ObjectCount instance to the database

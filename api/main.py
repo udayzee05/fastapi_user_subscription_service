@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 
 # module imports
-from .routes import blog_content,users, auth, password_reset,NonTelescopicPipe
+from .routes import blog_content,users, auth, password_reset,NonTelescopicPipe,subscriptions
 
 # initialize an app
 app = FastAPI()
@@ -42,6 +42,7 @@ app.include_router(users.router)
 app.include_router(auth.router)
 app.include_router(password_reset.router)
 app.include_router(NonTelescopicPipe.router)
+app.include_router(subscriptions.router)
 
 
 @app.get("/")

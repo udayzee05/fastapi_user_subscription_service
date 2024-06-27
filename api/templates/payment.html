@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Razorpay Payment Integration</title>
+    <style>
+        body {
+            text-align: center;
+            font-size: xx-large;
+        }
+
+        h1 {
+            color: blue;
+            font-size: xx-large;
+        }
+    </style>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+
+<body>
+    <h1>Subscribe to AlVision Count</h1>
+    <form id="payment-form" action="http://localhost:8000/subscriptions/payment/success" method="POST">
+        <input type="hidden" name="razorpay_order_id" id="razorpay_order_id">
+        <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id">
+        <input type="hidden" name="razorpay_signature" id="razorpay_signature">
+        <input type="hidden" name="email" value="{{ email }}">
+        <input type="hidden" name="order_id" value="{{ order_id }}">
+        <input type="hidden" name="subscription_type" value="{{ subscription_type }}">
+    </form>
+
+    <script>
+        var options = {
+            "key": "{{ razorpay_key }}", // Enter the Key ID generated from the Dashboard
+            "amount": "{{ amount }}", // Amount is in currency subunits. Default currency is INR.
+            "currency": "INR",
+            "name": "Alvision Count",
+            "description": "Subscription",
+            "order_id": "{{ order_id }}", //This is a sample Order ID. Pass the `id` obtained in the response of Step 1
+            "handler": function (response) {
+                document.getElementById('razorpay_order_id').value = response.razorpay_order_id;
+                document.getElementById('razorpay_payment_id').value = response.razorpay_payment_id;
+                document.getElementById('razorpay_signature').value = response.razorpay_signature;
+                document.getElementById('payment-form').submit();
+            },
+            "prefill": {
+                "name": "{{ email }}",
+                "email": "{{ email }}",
+            },
+            "theme": {
+                "color": "#3399cc"
+            }
+        };
+        var rzp1 = new Razorpay(options);
+        rzp1.on('payment.failed', function (response) {
+            alert(response.error.code);
+            alert(response.error.description);
+            alert(response.error.source);
+            alert(response.error.step);
+            alert(response.error.reason);
+            alert(response.error.metadata.order_id);
+            alert(response.error.metadata.payment_id);
+        });
+        rzp1.open();
+    </script>
+</body>
+
+</html>
