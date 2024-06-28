@@ -9,7 +9,7 @@ from ..schemas import User, UserResponse, db
 from ..utils import get_password_hash
 from ..send_email import send_registration_mail
 import secrets
-
+from datetime import datetime, timedelta
 
 router = APIRouter(
     prefix="/users",
@@ -35,8 +35,14 @@ async def registration(user_info: User):
 
     # hash the user password
     user_info["password"] = get_password_hash(user_info["password"])
+
     # generate apiKey
     user_info["apiKey"] = secrets.token_hex(20)
+
+    #add registered time and date
+    user_info["trial_start_date"] = datetime.now()
+    user_info["trial_end_date"] = datetime.now() + timedelta(days=7)
+
     new_user = await db["users"].insert_one(user_info)
     created_user = await db["users"].find_one({"_id": new_user.inserted_id})
 
@@ -46,6 +52,7 @@ async def registration(user_info: User):
             "title": "Registration successful",
             "name": user_info["name"],
             "role": user_info["role"]
+
         }
     )
 

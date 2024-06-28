@@ -1,5 +1,5 @@
 import logging
-from fastapi import FastAPI, HTTPException, Depends, APIRouter, Request, Query,Form
+from fastapi import FastAPI, HTTPException, Depends, APIRouter, Request, Query, Form
 import razorpay
 from datetime import datetime, timedelta
 from ..schemas import db, Subscription, User
@@ -17,6 +17,7 @@ templates = Jinja2Templates(directory="api/templates")
 
 # Razorpay client
 client = razorpay.Client(auth=(settings.RAZORPAY_API_KEY, settings.RAZORPAY_SECRET_KEY))
+
 @router.get("/payment", response_class=HTMLResponse)
 async def payment_page(
     request: Request,
@@ -25,12 +26,44 @@ async def payment_page(
 ):
     user_model = User(**user)  # Convert the user dictionary to a Pydantic model
 
+    # Check if the user is currently in a trial period
+    if user_model.trial_end_date and user_model.trial_end_date > datetime.now():
+        trial_remaining_days = (user_model.trial_end_date - datetime.now()).days
+        return HTMLResponse(content=f"You are currently on a trial period. {trial_remaining_days} days remaining.", status_code=200)
+
     try:
-        # Set amount based on subscription type
+        # Check for existing active subscription
+        existing_subscription = await db.subscriptions.find_one({"user_id": str(user_model.id), "status": "active"})
+        
+        if existing_subscription:
+            logging.info(f"Existing subscription found for user {user_model.email}: {existing_subscription}")
+            # Extend the subscription
+            if subscription_type == "monthly":
+                additional_days = 30
+                amount = 10000  # 100.00 INR in paise
+            elif subscription_type == "yearly":
+                additional_days = 365
+                amount = 120000  # 1200.00 INR in paise
+            else:
+                raise HTTPException(status_code=400, detail="Invalid subscription type")
+            
+            # Calculate new end date
+            new_end_date = existing_subscription["end_date"] + timedelta(days=additional_days)
+            
+            # Update subscription details
+            updated_subscription = await db.subscriptions.update_one(
+                {"_id": existing_subscription["_id"]},
+                {"$set": {"end_date": new_end_date, "amount": existing_subscription["amount"] + amount}}
+            )
+            logging.info(f"Subscription extended for user {user_model.email}: {updated_subscription}")
+            
+            return HTMLResponse(content=f"Subscription extended until {new_end_date}", status_code=200)
+
+        # If no existing subscription, create a new one
         if subscription_type == "monthly":
-            amount = 100 # 100.00 INR in paise
+            amount = 10000  # 100.00 INR in paise
         elif subscription_type == "yearly":
-            amount = 200 # 1200.00 INR in paise
+            amount = 120000  # 1200.00 INR in paise
         else:
             raise HTTPException(status_code=400, detail="Invalid subscription type")
 

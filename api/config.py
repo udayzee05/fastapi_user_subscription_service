@@ -29,7 +29,5 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 
-print(f"MONGODB_URL from .env: {os.getenv('MONGODB_URL')}")
-
 
 settings = Settings()

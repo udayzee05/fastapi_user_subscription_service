@@ -88,6 +88,8 @@ class User(BaseModel):
     email: EmailStr
     password: str
     role: str =Field(default="admin")
+    trial_start_date: Optional[datetime] = None
+    trial_end_date: Optional[datetime] = None
 
     class Config:
         populate_by_name = True
@@ -98,7 +100,7 @@ class User(BaseModel):
                 "name": "John Doe",
                 "email": "jdoe@example.com",
                 "password": "secret_code",
-                "role": "user"
+                "role": "admin"
             }
         }
 
@@ -117,7 +119,7 @@ class UserResponse(BaseModel):
             "example": {
                 "name": "John Doe",
                 "email": "jdoe@example.com",
-                "role": "user"
+                "role": "admin"
             }
         }
 
