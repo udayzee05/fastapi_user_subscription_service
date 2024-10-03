@@ -3,8 +3,8 @@ import logging
 
 from fastapi import Depends, Request, HTTPException
 
-from ..schemas import User, db,ObjectCount,ObjectCountResponse,CountRequest
-from ..oauth2 import get_current_user
+from schemas import User, db,ObjectCount,ObjectCountResponse,CountRequest
+from core.oauth2 import get_current_user
 
 from PIL import Image
 import cv2
@@ -12,13 +12,12 @@ import base64
 import uuid
 from datetime import datetime,timedelta
 import os
-from api.NonTelescopicPipe import count_objects_with_yolo
-from api.aws import AWSConfig
-from api.system_logger import log_request_stats
+from api.services.NonTelescopicPipe import count_objects_with_yolo, get_segmented_pipes
+from api.core.aws import AWSConfig
 from fastapi import APIRouter
 
 
-router = APIRouter()
+router = APIRouter(prefix="/NonTelescopicPipe", tags=["NonTelescopicPipe"])
 
 # Logging configuration
 logging.basicConfig(
@@ -62,23 +61,37 @@ async def save_base64_image(base64_str):
     return original_image_url
 
 
-async def get_current_admin_user(user: dict = Depends(get_current_user)):
-    if not isinstance(user, User):
-        user = User(**user)
-    if user.role != "admin":
-        raise HTTPException(
-            status_code=403, detail="Access forbidden: Requires admin role"
-        )
-    return user
+# async def get_current_admin_user(user: dict = Depends(get_current_user)):
+#     if not isinstance(user, User):
+#         user = User(**user)
+#     if user.role != "admin":
+#         raise HTTPException(
+#             status_code=403, detail="Access forbidden: Requires admin role"
+#         )
+#     return user
 
-@router.post("/count-with-yolo")
+@router.post("/nonTelescopic")
 async def count_with_yolo(
     count_request: CountRequest,
-    admin: User = Depends(get_current_admin_user),
+    user: User = Depends(get_current_user),
 ):
     original_image_url = await save_base64_image(count_request.base64_image)
 
-    processed_img, count_text = count_objects_with_yolo(count_request.base64_image)
+    segmented_base64 = get_segmented_pipes(count_request.base64_image)
+   
+    if segmented_base64:
+        # Pass the category_name to the counting function
+        processed_img, count_text = count_objects_with_yolo(segmented_base64)
+    else:
+        # If no segmentation, pass the original image for object counting
+        processed_img, count_text = count_objects_with_yolo(count_request.base64_image)
+
+    if processed_img is None:
+        print("No pipes detected.")
+        processed_img, count_text = None, "0 objects"
+        raise HTTPException(status_code=500, detail="Failed to process image.")
+    
+
     processed_img = cv2.cvtColor(processed_img, cv2.COLOR_BGR2RGB)
     processed_pil = Image.fromarray(processed_img)
     processed_image_path = f"../static/processed_{uuid.uuid4()}.png"
@@ -103,12 +116,13 @@ async def count_with_yolo(
         timestamp=current_ist_datetime,
         original_image_url=original_image_url,
         processed_image_url=processed_image_url,
-        user_id=admin.id,
+        user_id=user["_id"],
+        category="nonTelescopic",
     )
-
     # Save the ObjectCount instance to the database
-    await db["object_counts"].insert_one(object_count.dict(by_alias=True))
+    await db["object_counts"].insert_one(object_count.model_dump(by_alias=True))
 
     os.remove(processed_image_path)
 
     return ObjectCountResponse(object_count=object_count)
+

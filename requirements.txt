@@ -11,3 +11,4 @@ fastapi_mail
 boto3
 razorpay
 pillow
+apscheduler

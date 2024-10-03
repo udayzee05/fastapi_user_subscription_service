@@ -1,6 +1,7 @@
 # library imports
 import sys
 import os
+import uvicorn
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,10 +9,10 @@ from fastapi.staticfiles import StaticFiles
 
 
 # module imports
-from .routes import blog_content,users, auth, password_reset,NonTelescopicPipe,subscriptions
+from routes import blog_content,users, auth, password_reset,NonTelescopicPipe,subscriptions,telescopic,dataManipulation,userProfile
 
 # initialize an app
-app = FastAPI()
+app = FastAPI(title="Alluvium AI ServicesPlatform", version="1.0.0")
 
 # Handle CORS protection
 origins = ["*"]
@@ -37,14 +38,21 @@ if not os.path.exists(static_dir):
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # register all the router endpoint
-app.include_router(blog_content.router)
 app.include_router(users.router)
+app.include_router(userProfile.router)
 app.include_router(auth.router)
 app.include_router(password_reset.router)
 app.include_router(NonTelescopicPipe.router)
+app.include_router(telescopic.router)
+app.include_router(dataManipulation.router)
 app.include_router(subscriptions.router)
 
 
 @app.get("/")
 def get():
-    return {"msg": "Hello world"}
+    return {"msg": "Welcome to Alluvium AI Services Platform"}
+
+
+if __name__ == "__main__":
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)

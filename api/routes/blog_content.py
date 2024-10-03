@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import List
 
 # module imports
-from ..schemas import BlogContent, BlogContentResponse, db
-from .. import oauth2
+from schemas import BlogContent, BlogContentResponse, db
+from core.oauth2 import get_current_user
 
 router = APIRouter(
     prefix="/blog",
@@ -16,7 +16,7 @@ router = APIRouter(
 
 
 @router.post("/", response_description="Create Post Content", response_model=BlogContentResponse)
-async def read_item(blog_content: BlogContent, current_user=Depends(oauth2.get_current_user)):
+async def read_item(blog_content: BlogContent, current_user=Depends(get_current_user)):
 
     try:
         # jsonize the data
@@ -71,7 +71,7 @@ async def get_blog_post(id: str):
 
 
 @router.put("/{id}", response_description="Update a blog Post", response_model=BlogContentResponse)
-async def update_blog_post(id: str, blog_content: BlogContent, current_user = Depends(oauth2.get_current_user)):
+async def update_blog_post(id: str, blog_content: BlogContent, current_user = Depends(get_current_user)):
 
     if blog_post := await db["blogPost"].find_one({"_id": id}):
         print(blog_post)
@@ -104,7 +104,7 @@ async def update_blog_post(id: str, blog_content: BlogContent, current_user = De
 
 
 @router.delete("/{id}", response_description="Get Blog Post", )
-async def get_blog_post(id: str, current_user = Depends(oauth2.get_current_user)):
+async def get_blog_post(id: str, current_user = Depends(get_current_user)):
 
     if blog_post := await db["blogPost"].find_one({"_id": id}):
         

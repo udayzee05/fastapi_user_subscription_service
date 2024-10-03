@@ -1,11 +1,12 @@
 import motor.motor_asyncio
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr,field_validator,ValidationInfo
 from bson import ObjectId
-from typing import Any, Optional,List
+from typing import Any, Optional,List,Dict
 from pydantic_core import core_schema, CoreSchema
 from pydantic.json_schema import GetJsonSchemaHandler, JsonSchemaValue
 from pydantic import GetCoreSchemaHandler
 import os
+import re
 from datetime import datetime
 
 from api.config import settings
@@ -39,57 +40,48 @@ class PyObjectId(ObjectId):
     ) -> JsonSchemaValue:
         return handler(core_schema.str_schema())
 
-class BlogContentBase(BaseModel):
-    title: str
-    body: str
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "title": "Sample Blog Title",
-                "body": "This is the content of the sample blog."
-            }
-        }
-
-class BlogContentCreate(BlogContentBase):
-    pass
-
-class BlogContent(BlogContentBase):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-
-    class Config:
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
-
-class BlogContentResponse(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    title: str
-    body: str
-    auther_name: str
-    auther_id: str
-    created_at: str
-
-    class Config:
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
-        json_schema_extra = {
-            "example": {
-                "title": "blog title",
-                "body": "blog content",
-                "auther_name": "name of the auther",
-                "auther_id": "ID of the auther",
-                "created_at": "Date of blog creation"
-            }
-        }
 
 class User(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     name: str
     email: EmailStr
     password: str
-    role: str =Field(default="admin")
+    phone_no: Optional[str] = None
+    role: str =Field(default="user")
     trial_start_date: Optional[datetime] = None
     trial_end_date: Optional[datetime] = None
+     # New fields for user profile
+    company_email: Optional[EmailStr] = None
+    phone_number: Optional[str] = None
+    gstin_number: Optional[str] = None
+    profile_picture: Optional[str] = None 
+    count_data: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of dictionaries storing category, total images counted, and total object count"
+    )
+
+    @field_validator('password')
+    @classmethod
+    def password_validation(cls, v):
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not re.search(r'[0-9]', v):
+            raise ValueError('Password must contain at least one number')
+        if not re.search(r'[\W_]', v):
+            raise ValueError('Password must contain at least one special character')
+        return v
+    @field_validator('phone_no')
+    @classmethod
+    def phone_number_validation(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
+        if v is not None:
+            # Example rule: phone number must be 10 digits long and contain only digits
+            if not re.fullmatch(r'\d{10}', v):
+                raise ValueError('Phone number must be exactly 10 digits long')
+        return v
 
     class Config:
         populate_by_name = True
@@ -100,7 +92,8 @@ class User(BaseModel):
                 "name": "John Doe",
                 "email": "jdoe@example.com",
                 "password": "secret_code",
-                "role": "admin"
+                "phone_no": "9999999999",
+                "role": "user"
             }
         }
 
@@ -108,7 +101,9 @@ class UserResponse(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     name: str
     email: EmailStr
-    role: str = Field(default="admin")
+    phone_no: Optional[str] = None
+    role: str = Field(default="user")
+    
 
 
     class Config:
@@ -119,7 +114,9 @@ class UserResponse(BaseModel):
             "example": {
                 "name": "John Doe",
                 "email": "jdoe@example.com",
-                "role": "admin"
+                "password": "secret_code",
+                "phone_no": "9999999999",
+                "role": "user"
             }
         }
 
@@ -130,6 +127,7 @@ class ObjectCount(BaseModel):
     timestamp: datetime
     original_image_url: str   # s3 url
     processed_image_url: str  # s3 url
+    category: str
     user_id: PyObjectId   # User ID who is going to count
 
     class Config:
@@ -142,6 +140,7 @@ class ObjectCount(BaseModel):
                 "timestamp": "2022-01-01T00:00:00Z",
                 "original_image_url": "https://example.com/original.png",
                 "processed_image_url": "https://example.com/processed.png",
+                "category": "service type",
                 "user_id": "60d5ecb8f1e2f0a5a4d7b2f1"
             }
         }
@@ -162,6 +161,8 @@ class ObjectCountResponse(BaseModel):
                     "timestamp": "2022-01-01T00:00:00Z",
                     "original_image_url": "https://example.com/original.png",
                     "processed_image_url": "https://example.com/processed.png",
+                    "category": "service type",
+
                     "user_id": "60d5ecb8f1e2f0a5a4d7b2f1"
                 }
             }
@@ -223,3 +224,95 @@ class PasswordReset(BaseModel):
 
 class CountRequest(BaseModel):
     base64_image: str
+
+
+
+# class UserProfileUpdate(BaseModel):
+#     company_email: Optional[EmailStr] = None
+#     phone_number: Optional[str] = None
+#     gstin_number: Optional[str] = None
+#     profile_picture: Optional[str] = None  # URL to the profile picture
+
+# class UserProfileResponse(BaseModel):
+#     role: str
+#     email: EmailStr
+#     company_email: Optional[EmailStr] = None
+#     phone_number: Optional[str] = None
+#     gstin_number: Optional[str] = None
+#       # URL to the profile picture
+#     profile_picture: Optional[str] = None  # URL to the profile picture
+
+
+class UserProfileUpdate(BaseModel):
+    company_email: Optional[EmailStr] = None
+    phone_number: Optional[str] = None
+    gstin_number: Optional[str] = None
+    profile_picture: Optional[str] = None  # URL to the profile picture
+
+    @field_validator('gstin_number')
+    def validate_gstin(cls, v):
+        # GSTIN number must be exactly 15 characters long
+        if v and len(v) != 15:
+            raise ValueError('GSTIN must be exactly 15 characters long')
+
+        # GSTIN number format: First 2 digits, next 10 characters (PAN), digit, alphabet, digit/alphabet
+        gstin_pattern = r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$'
+
+        if not re.match(gstin_pattern, v):
+            raise ValueError('Invalid GSTIN format')
+
+        return v
+
+
+class UserProfileResponse(BaseModel):
+    role: str
+    email: EmailStr
+    company_email: Optional[EmailStr] = None
+    phone_number: Optional[str] = None
+    gstin_number: Optional[str] = None
+    profile_picture: Optional[str] = None  # URL to the profile picture
+   
+
+class BlogContentBase(BaseModel):
+    title: str
+    body: str
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "title": "Sample Blog Title",
+                "body": "This is the content of the sample blog."
+            }
+        }
+
+class BlogContentCreate(BlogContentBase):
+    pass
+
+class BlogContent(BlogContentBase):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+
+    class Config:
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+class BlogContentResponse(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    title: str
+    body: str
+    auther_name: str
+    auther_id: str
+    created_at: str
+
+    class Config:
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+        json_schema_extra = {
+            "example": {
+                "title": "blog title",
+                "body": "blog content",
+                "auther_name": "name of the auther",
+                "auther_id": "ID of the auther",
+                "created_at": "Date of blog creation"
+            }
+        }
+
