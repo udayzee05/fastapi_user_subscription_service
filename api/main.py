@@ -9,7 +9,8 @@ from fastapi.staticfiles import StaticFiles
 
 
 # module imports
-from routes import blog_content,users, auth, password_reset,NonTelescopicPipe,subscriptions,telescopic,dataManipulation,userProfile
+from routes import users, auth, password_reset,NonTelescopicPipe,subscriptions,telescopic,dataManipulation,userProfile
+from routes.subscription import plan,webhook,subscribe,invoice
 
 # initialize an app
 app = FastAPI(title="Alluvium AI ServicesPlatform", version="1.0.0")
@@ -45,7 +46,11 @@ app.include_router(password_reset.router)
 app.include_router(NonTelescopicPipe.router)
 app.include_router(telescopic.router)
 app.include_router(dataManipulation.router)
-app.include_router(subscriptions.router)
+# app.include_router(subscriptions.router)
+app.include_router(plan.router)
+app.include_router(webhook.router)
+app.include_router(subscribe.router)
+app.include_router(invoice.router)
 
 
 @app.get("/")

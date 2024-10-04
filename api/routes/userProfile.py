@@ -33,7 +33,6 @@ async def update_profile(
     Update the profile information of the currently logged-in user.
     """
     # Debug current_user and check its content
-    print("Current User:", current_user)
 
     if "_id" not in current_user:
         raise HTTPException(status_code=400, detail="User ID not found in the current user")

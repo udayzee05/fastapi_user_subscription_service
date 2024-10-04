@@ -5,7 +5,7 @@ from fastapi import Depends, Request, HTTPException
 
 from schemas import User, db,ObjectCount,ObjectCountResponse,CountRequest
 from core.oauth2 import get_current_user
-
+from core.utils import check_valid_subscription
 from PIL import Image
 import cv2
 import base64
@@ -15,6 +15,7 @@ import os
 from api.services.NonTelescopicPipe import count_objects_with_yolo, get_segmented_pipes
 from api.core.aws import AWSConfig
 from fastapi import APIRouter
+
 
 
 router = APIRouter(prefix="/NonTelescopicPipe", tags=["NonTelescopicPipe"])
@@ -74,6 +75,7 @@ async def save_base64_image(base64_str):
 async def count_with_yolo(
     count_request: CountRequest,
     user: User = Depends(get_current_user),
+    is_valid_subscription: bool = Depends(check_valid_subscription)
 ):
     original_image_url = await save_base64_image(count_request.base64_image)
 
