@@ -2,12 +2,11 @@ import logging
 from fastapi import FastAPI, HTTPException, Depends, APIRouter, Request
 from typing import List, Optional
 import razorpay
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 from razorpay.errors import BadRequestError, SignatureVerificationError
 from schemas import User, db
 from core.oauth2 import get_current_user
 from config import settings
-from core.utils import check_admin_user
 from fastapi.responses import JSONResponse
 import time
 from datetime import datetime
@@ -28,16 +27,9 @@ client = razorpay.Client(auth=(settings.TEST_RAZORPAY_API_KEY, settings.TEST_RAZ
 
 class SubscriptionDetails(BaseModel):
     plan_id: str
-    subscription_type: str  # "monthly", "quarterly", "half-yearly", "yearly"
     currency: str = 'INR'
 
-    @validator('subscription_type')
-    def validate_subscription_type(cls, v):
-        allowed_types = {"monthly", "quarterly", "half-yearly", "yearly"}
-        if v not in allowed_types:
-            raise ValueError(f"Invalid subscription type. Allowed types: {allowed_types}")
-        return v
-
+    
 
 class SubscriptionResponse(BaseModel):
     subscription_id: str
@@ -51,18 +43,56 @@ class SubscriptionResponse(BaseModel):
     updated_at: Optional[str] = None
     cancelled_at: Optional[str] = None
 
+from datetime import datetime
+
+def format_datetime(dt: datetime) -> str:
+    """
+    Convert datetime object to string in '%Y-%m-%d %H:%M:%S' format.
+    """
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
+
+from datetime import datetime, timedelta
+def calculate_total_count(plan_name: str):
+    """
+    Calculate the total count based on the plan name.
+    Example plan names: "Metal Counting Monthly", "Metal Counting Quarterly", "Metal Counting Yearly"
+    """
+    if "monthly" in plan_name.lower():
+        return 1200
+    elif "quarterly" in plan_name.lower():
+        return 400
+    elif "half-yearly" in plan_name.lower():
+        return 200
+    elif "yearly" in plan_name.lower():
+        return 100
+    else:
+        return 12
+def calculate_dates_from_plan_name(plan_name: str):
+    """
+    Calculate the start_date and end_date based on the plan name.
+    Example plan names: "Metal Counting Monthly", "Metal Counting Quarterly", "Metal Counting Yearly"
+    """
+    start_date = datetime.now()
+    if "monthly" in plan_name.lower():
+        end_date = start_date + timedelta(days=30)
+    elif "quarterly" in plan_name.lower():
+        end_date = start_date + timedelta(days=90)
+    elif "half-yearly" in plan_name.lower():
+        end_date = start_date + timedelta(days=180)
+    elif "yearly" in plan_name.lower():
+        end_date = start_date + timedelta(days=365)
+    else:
+        # Default to 30 days (monthly) if no duration is found in the name
+        end_date = start_date + timedelta(days=30)
+
+    return start_date, end_date
 
 
-
-# 2. Subscribe to a plan (User selects plan and enters payment details)
 @router.post("/subscribe-services", response_model=SubscriptionResponse)
 async def subscribe_services(
     subscription_details: SubscriptionDetails,
     current_user: User = Depends(get_current_user)
 ):
-    """
-    The user subscribes to a selected plan. Payment is handled, and a subscription is created.
-    """
     try:
         # Fetch plan details from MongoDB
         plan = await db.plans.find_one({"razorpay_plan_id": subscription_details.plan_id})
@@ -77,16 +107,14 @@ async def subscribe_services(
         })
         if existing_subscription:
             raise HTTPException(status_code=400, detail="Active subscription for this plan already exists")
-
-        # Determine total amount based on the subscription type
-        multiplier = {'monthly': 1, 'quarterly': 3, 'half-yearly': 6, 'yearly': 12}.get(subscription_details.subscription_type)
-        total_amount = plan['amount'] * multiplier  # Calculate total amount
-
+        
+        # Determine total count based on the plan name
+        total_count = calculate_total_count(plan['name'])
         # Create the subscription in Razorpay (initially set status to pending)
         subscription = client.subscription.create({
             'plan_id': subscription_details.plan_id,
-            'total_count': multiplier,
             'customer_notify': 1,
+            'total_count': total_count,
             'notes': {
                 'created_by': current_user['email']
             }
@@ -95,25 +123,25 @@ async def subscribe_services(
         # Extract the payment link from the subscription response
         payment_link = subscription.get('short_url')
 
+        # Calculate the start and end date based on the plan name
+        start_date, end_date = calculate_dates_from_plan_name(plan['name'])
+
         # Get the current timestamp as created_at
         created_at = time.time()
-
-        # Calculate start_date and end_date based on created_at and subscription_type
-        start_date, end_date = calculate_dates(created_at, subscription_details.subscription_type)
 
         # Prepare subscription data to save to the database
         subscription_data = {
             'subscription_id': subscription['id'],
             'user_id': str(current_user["_id"]),  # Convert ObjectId to string
             'plan_id': subscription_details.plan_id,
-            'amount': total_amount,
+            'plan_name': plan['name'],
+            'amount': plan['amount'],
             'customer_email': current_user["email"],
             'status': 'pending',  # Initial status set to pending
             'created_at': created_at,
-            'start_date': start_date,  # Calculated start date
-            'end_date': end_date,      # Calculated end date
+            'start_date': start_date.strftime('%Y-%m-%d %H:%M:%S'),
+            'end_date': end_date.strftime('%Y-%m-%d %H:%M:%S'),
             'payment_link': payment_link,
-            'subscription_type': subscription_details.subscription_type
         }
 
         # Save subscription to MongoDB
@@ -132,10 +160,11 @@ async def subscribe_services(
         raise HTTPException(status_code=500, detail="Unexpected error occurred")
 
 
-
+###########################################################################################################################################
+from razorpay.errors import BadRequestError
 
 class CancelSubscriptionRequest(BaseModel):
-    old_plan_id: str
+    subcription_id: str
 
 # Route to cancel the old subscription
 @router.post("/cancel-old-subscription")
@@ -148,7 +177,7 @@ async def cancel_old_subscription_route(
     """
     try:
         # Call the function to cancel the old subscription
-        await cancel_old_subscription(current_user["_id"], cancel_request.old_plan_id)
+        await cancel_old_subscription(current_user["_id"], cancel_request.subcription_id)
         return {"status": "success", "message": "Old subscription cancelled successfully"}
     except HTTPException as e:
         logger.error(f"HTTPException: {str(e.detail)}")
@@ -156,31 +185,56 @@ async def cancel_old_subscription_route(
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=500, detail="An error occurred while cancelling the old subscription")
-
-# The original function for canceling the old subscription
-async def cancel_old_subscription(user_id: str, old_plan_id: str):
+    
+async def cancel_old_subscription(user_id: str, subscription_id: str):
     try:
-        # Fetch the old subscription from the database
-        subscription = await db.subscriptions.find_one({"user_id": user_id, "plan_id": old_plan_id, "status": "active"})
-        
+        # Debugging logs to ensure correct plan and subscription IDs
+        logger.info(f"Attempting to cancel subscription for user {user_id} and subscription_id {subscription_id}")
+
+        # Fetch the old subscription using subscription_id instead of plan_id
+        subscription = await db.subscriptions.find_one({"user_id": user_id, "subscription_id": subscription_id, "status": "active"})
+
         if subscription:
             # Cancel the old subscription in Razorpay
-            client.subscription.cancel(subscription['subscription_id'])
-            logger.info(f"Cancelled old subscription {subscription['subscription_id']} for user {user_id}")
-            
-            # Update the subscription status in the database
-            await db.subscriptions.update_one({"subscription_id": subscription['subscription_id']}, {"$set": {"status": "cancelled"}})
-        else:
-            logger.info(f"No active subscription found for user {user_id} and plan {old_plan_id}")
+            try:
+                razorpay_subscription = client.subscription.cancel(subscription['subscription_id'])
+                if razorpay_subscription['status'] != 'cancelled':
+                    raise HTTPException(status_code=500, detail="Failed to cancel the subscription in Razorpay")
+                logger.info(f"Cancelled old subscription {subscription['subscription_id']} for user {user_id}")
+            except BadRequestError as e:
+                logger.error(f"Error cancelling subscription in Razorpay: {str(e)}")
+                raise HTTPException(status_code=400, detail=f"Error cancelling subscription in Razorpay: {str(e)}")
 
+            # Update the subscription status in the database
+            await db.subscriptions.update_one(
+                {"subscription_id": subscription['subscription_id']}, 
+                {"$set": {"status": "cancelled"}}
+            )
+
+            # Remove the service from the user document
+            await db.users.update_one(
+                {"_id": user_id}, 
+                {"$pull": {"subscribed_services": subscription['plan_name']}}  # Remove the plan name from the list
+            )
+
+        else:
+            logger.info(f"No active subscription found for user {user_id} and subscription_id {subscription_id}")
+
+    except BadRequestError as e:
+        logger.error(f"Razorpay error in cancelling old subscription: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Razorpay error: {str(e)}")
     except Exception as e:
         logger.error(f"Error in cancelling old subscription: {str(e)}")
         raise HTTPException(status_code=500, detail="Error cancelling old subscription")
 
 
-
+#############################################################################################################################
 def format_timestamp(timestamp: float) -> str:
-    return datetime.fromtimestamp(timestamp).strftime('%d-%m-%Y %H:%M:%S')
+    """
+    Convert a timestamp (float) to a formatted datetime string.
+    """
+    return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+
 
 @router.get("/list_subscriptions", response_model=List[SubscriptionResponse])
 async def list_user_subscriptions(
@@ -189,58 +243,67 @@ async def list_user_subscriptions(
     try:
         # Fetch subscriptions for the current user from MongoDB
         subscriptions = await db.subscriptions.find({"user_id": current_user["_id"]}).to_list(length=None)
-        
-        # Format the timestamps
-        for subscription in subscriptions:
-            subscription['created_at'] = format_timestamp(subscription['created_at'])
-            if 'updated_at' in subscription:
-                subscription['updated_at'] = format_timestamp(subscription['updated_at'])
-            if 'cancelled_at' in subscription:
-                subscription['cancelled_at'] = format_timestamp(subscription['cancelled_at'])
 
-        return subscriptions
+        updated_subscriptions = []
+
+        # Loop through each subscription to fetch the latest status from Razorpay
+        for subscription in subscriptions:
+            subscription_id = subscription['subscription_id']
+
+            try:
+                # Fetch the latest subscription details from Razorpay
+                razorpay_subscription = client.subscription.fetch(subscription_id)
+
+                # Extract the latest status from Razorpay response
+                latest_status = razorpay_subscription['status']
+
+                # If the status has changed, update it in the local database
+                if latest_status != subscription['status']:
+                    await db.subscriptions.update_one(
+                        {"subscription_id": subscription_id},
+                        {"$set": {"status": latest_status}}
+                    )
+                    subscription['status'] = latest_status  # Update the local variable too
+
+                # Format the timestamps from Razorpay or MongoDB if necessary
+                subscription['created_at'] = format_timestamp(razorpay_subscription.get('created_at', subscription['created_at']))
+                if 'updated_at' in razorpay_subscription:
+                    subscription['updated_at'] = format_timestamp(razorpay_subscription['updated_at'])
+                else:
+                    subscription['updated_at'] = format_timestamp(subscription.get('updated_at', time.time()))
+
+                if 'cancelled_at' in razorpay_subscription:
+                    subscription['cancelled_at'] = format_timestamp(razorpay_subscription['cancelled_at'])
+                elif 'cancelled_at' in subscription:
+                    subscription['cancelled_at'] = format_timestamp(subscription['cancelled_at'])
+
+            except Exception as e:
+                logger.error(f"Error fetching subscription {subscription_id} from Razorpay: {str(e)}")
+                continue  # Skip this subscription if there's an error fetching the latest status
+
+            updated_subscriptions.append(subscription)
+
+        return updated_subscriptions
+
     except Exception as e:
         logger.error(f"Error fetching subscriptions for user: {str(e)}")
         raise HTTPException(status_code=500, detail="Unexpected error occurred while fetching subscriptions")
-    
+
 
 
 
 
 ##################################################################################################################################################
-
 from pydantic import BaseModel
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Optional
 
 class SubscriptionDetailResponse(BaseModel):
     subscription_id: str
     plan_name: str
-    services: List[str]  # List of services associated with the plan
     status: str
     start_date: Optional[datetime]  # Make start_date optional
     end_date: Optional[datetime]    # Make end_date optional
-
-
-# Function to calculate subscription dates based on created_at and subscription_type
-def calculate_dates(created_at: float, subscription_type: str) :
-    # Convert timestamp to datetime
-    start_date = datetime.fromtimestamp(created_at)
-
-    # Determine the duration based on subscription type
-    if subscription_type == "monthly":
-        end_date = start_date + timedelta(days=30)
-    elif subscription_type == "quarterly":
-        end_date = start_date + timedelta(days=90)
-    elif subscription_type == "half-yearly":
-        end_date = start_date + timedelta(days=180)
-    elif subscription_type == "yearly":
-        end_date = start_date + timedelta(days=365)
-    else:
-        end_date = None  # You can handle other types like 'quarterly' here if needed
-
-    return start_date, end_date
-
 
 @router.get("/subscriptions/active", response_model=List[SubscriptionDetailResponse])
 async def get_active_subscriptions(
@@ -253,11 +316,12 @@ async def get_active_subscriptions(
         # Fetch user's active subscriptions from the database
         user_subscriptions = await db.subscriptions.find({
             "user_id": current_user["_id"], 
-            "status": "active"
+            "status": "active"  # Only fetch active subscriptions
         }).to_list(length=None)
 
+        # If no active subscriptions are found, return an empty list
         if not user_subscriptions:
-            raise HTTPException(status_code=404, detail="No active subscriptions found.")
+            return []  # Return empty list if no active subscriptions are found
 
         active_subscription_details = []
 
@@ -270,23 +334,23 @@ async def get_active_subscriptions(
             if not plan:
                 raise HTTPException(status_code=404, detail=f"Plan not found for subscription {subscription['subscription_id']}")
 
-            # Fetch services related to the plan (this could be part of the plan document)
-            services = plan.get("services", [])
+            # Extract start_date and end_date from the subscription
+            start_date = subscription.get("start_date")
+            end_date = subscription.get("end_date")
 
-            # Calculate start_date and end_date based on created_at and subscription_type
-            created_at = subscription.get("created_at")
-            subscription_type = subscription.get("subscription_type", "yearly")
-            
-            start_date, end_date = calculate_dates(created_at, subscription_type)
+            # Convert start_date and end_date to datetime objects if they exist
+            if start_date:
+                start_date = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
+            if end_date:
+                end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
 
             # Create the response for each active subscription
             subscription_detail = SubscriptionDetailResponse(
                 subscription_id=subscription["subscription_id"],
                 plan_name=plan["name"],
-                services=services,
                 status=subscription["status"],
-                start_date=start_date,  # Calculated start_date
-                end_date=end_date       # Calculated end_date
+                start_date=start_date,  # Use the calculated start_date
+                end_date=end_date        # Use the calculated end_date
             )
             
             active_subscription_details.append(subscription_detail)

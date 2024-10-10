@@ -1,7 +1,7 @@
 import motor.motor_asyncio
 from pydantic import BaseModel, Field, EmailStr,field_validator,ValidationInfo
 from bson import ObjectId
-from typing import Any, Optional,List,Dict
+from typing import Any, Optional,List,Dict,Set
 from pydantic_core import core_schema, CoreSchema
 from pydantic.json_schema import GetJsonSchemaHandler, JsonSchemaValue
 from pydantic import GetCoreSchemaHandler
@@ -50,6 +50,7 @@ class User(BaseModel):
     role: str =Field(default="user")
     trial_start_date: Optional[datetime] = None
     trial_end_date: Optional[datetime] = None
+    subscribed_services:Set[str] = Field(default_factory=set)
      # New fields for user profile
     company_email: Optional[EmailStr] = None
     phone_number: Optional[str] = None

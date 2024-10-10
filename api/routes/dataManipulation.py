@@ -1,12 +1,14 @@
-
 import logging
 from fastapi import Depends, Request, HTTPException
-from schemas import User,db
+from schemas import User, db
 from core.oauth2 import get_current_user
 from bson import ObjectId
-from datetime import date
-from typing import List, Dict
+from datetime import date, datetime
 from fastapi import APIRouter
+
+from bson import ObjectId
+from fastapi import HTTPException, Depends
+from core.oauth2 import get_current_user
 
 
 router = APIRouter(prefix="/data-manipulation", tags=["Count Data Manipulation"])
@@ -19,104 +21,137 @@ logger = logging.getLogger(__name__)
 
 
 
-@router.patch("/manual-count")
-async def update_count(
-    increment: int, processed_image_url: str, user: User = Depends(get_current_user),
-):
-    if not user.counts:
-        raise HTTPException(status_code=404, detail="No records found for this user.")
-
-    # Retrieve the last count record
-    last_record = user.counts[-1]
-
-    # Extract the numeric part and the suffix from the last count
-    parts = last_record["Count"]
-    # if len(parts) < 2 or not parts[0].isdigit():
-    #     raise HTTPException(status_code=400, detail="Current count format is invalid.")
-
-    # Calculate the new count
-    new_count = parts+ increment
-    updated_count = f"{new_count}"  # Assuming the suffix is always the same and at index 1
-
-    # Update the count in the last record
-    last_record["Count"] = updated_count
-    last_record["Processed_Image_URL"] = processed_image_url
-
-    # Save the updated user document
-    await user.update({"$set": {"counts": user.counts}})
-    logger.info("Last record updated")
-
-    return {"msg": "Count and processed image URL updated", "Last_Record": last_record}
-
-
-
 
 @router.get("/no-of-requests")
-async def get_no_of_requests(date: date):
-    users = await User.find().to_list()
-    total_count = sum(
-        entry["count"]
-        for user in users
-        for entry in user.count_requests
-        if entry.get("date") == date.isoformat()
-    )
-    return {"date": date.isoformat(), "total_count": total_count}
-
-
-
-@router.get("/user-counts", response_model=List[Dict])
-async def get_user_counts(user: User = Depends(get_current_user)):
-    # filtered_counts = [count for count in user.counts if 'ID' in count]
-    logger.info("Retrieving user counts")
-    return user.counts
-
-@router.get("/user-counts/{date}", response_model=List[Dict])
-async def get_user_counts_by_date(
-    date: date, user: User = Depends(get_current_user)
-):
-    # filtered_counts = [count for count in user.counts if count["Date"] == date.isoformat() and 'ID' in count]
-    filtered_counts = [
-        count for count in user.counts if count["Date"] == date.isoformat()
-    ]
-    logger.info(f"Retrieving user counts for date: {date}")
-    return filtered_counts
-
-
-
-@router.get("/user-category-counts", response_model=List[Dict])
-async def get_user_category_counts(user: User = Depends(get_current_user)):
-    """
-    Route to count images and objects by category for the current user.
-    """
-    user_id = user.id  # Assuming `User` model contains the `id` field for user_id
-
-    # MongoDB aggregation pipeline to count the images and objects processed by category
-    pipeline = [
-        {
-            "$match": {
-                "user_id": ObjectId(user_id)  # Filter by current user's ID
-            }
-        },
-        {
-            "$group": {
-                "_id": "$category",  # Group by category
-                "total_images_counted": {"$sum": 1},
-                "total_object_count": {"$sum": "$object_count"}
-            }
-        },
-        {
-            "$project": {
-                "_id": 0,
-                "category": "$_id",
-                "total_images_counted": 1,
-                "total_object_count": 1
-            }
+async def get_no_of_requests(date: date, category: str = None):
+    # Convert the `date` into an ISODate format to match the timestamp field
+    start_of_day = datetime.combine(date, datetime.min.time())  # 00:00:00 of the date
+    end_of_day = datetime.combine(date, datetime.max.time())  # 23:59:59 of the date
+    
+    # Build the query for date range
+    query = {
+        "timestamp": {
+            "$gte": start_of_day,
+            "$lte": end_of_day
         }
-    ]
+    }
 
-    results = list(db.object_counts.aggregate(pipeline))
+    # If a category is provided, add it to the query
+    if category:
+        query["category"] = category
 
-    if not results:
-        raise HTTPException(status_code=404, detail="No records found for this user.")
+    # Print the query for debugging purposes
+    print(f"Querying with: {query}")
 
-    return results
+    # Query the `object_counts` collection with the built query
+    results = await db.object_counts.find(query).to_list(length=None)
+
+    # Print the results for debugging purposes
+    print(f"Found object counts: {results}")
+
+    # Get the number of records (number of documents found)
+    record_count = len(results)
+
+    # Print the final record count for debugging
+    print(f"Number of records: {record_count}")
+
+    return {"date": date.isoformat(), "category": category, "total_records": record_count}
+
+
+@router.get("/user-data")
+async def get_user_data_by_date_and_category(
+    date: date, 
+    category: str = None,  # Make category optional by setting default to None
+    user: dict = Depends(get_current_user)  # Get the current logged-in user as a dict
+):
+    """
+    Retrieve records for the logged-in user filtered by date and optionally category.
+    """
+    # Convert the `date` into an ISODate format to match the timestamp field
+    start_of_day = datetime.combine(date, datetime.min.time())  # 00:00:00 of the date
+    end_of_day = datetime.combine(date, datetime.max.time())  # 23:59:59 of the date
+    
+    # Build the query to filter by user_id and date
+    query = {
+        "user_id": ObjectId(user["_id"]),  # Access the user ID from the dictionary
+        "timestamp": {
+            "$gte": start_of_day,
+            "$lte": end_of_day
+        }
+    }
+
+    # If category is provided, add it to the query
+    if category:
+        query["category"] = category
+
+    # Print the query for debugging purposes
+    print(f"Querying with: {query}")
+
+    # Query the `object_counts` collection for the logged-in user
+    results = await db.object_counts.find(query).to_list(length=None)
+
+    # Convert ObjectId fields to strings for JSON serialization
+    for result in results:
+        result["_id"] = str(result["_id"])
+        result["user_id"] = str(result["user_id"])
+
+    # Print the results for debugging purposes
+    print(f"Found records: {results}")
+
+    # Get the number of records found
+    record_count = len(results)
+
+    # Return the results and the total number of records
+    return {
+        "date": date.isoformat(),
+        "category": category if category else "All",  # Return 'All' if no category provided
+        "user_id": str(user["_id"]),  # Return the user ID in the response
+        "total_records": record_count,
+        "records": results  # You can return the actual records if needed
+    }
+
+
+
+
+@router.patch("/manual-count")
+async def update_count(
+    increment: int, 
+    processed_image_url: str, 
+    category: str,  # Category to capture and filter records
+    user: dict = Depends(get_current_user)  # Retrieve the current logged-in user
+):
+    """
+    Update the count and processed image URL for the specified category.
+    """
+    # Access the user's `user_id`
+    user_id = ObjectId(user["_id"])
+
+    # Query the last record for the user and category
+    last_record = await db.object_counts.find_one(
+        {"user_id": user_id, "category": category},
+        sort=[("timestamp", -1)]  # Sort by timestamp to get the latest record
+    )
+
+    if not last_record:
+        raise HTTPException(status_code=404, detail=f"No records found for category: {category}.")
+
+    # Extract the current count and increment it
+    current_count = last_record["object_count"]
+    new_count = current_count + increment
+
+    # Update the record in MongoDB with the new count and processed image URL
+    update_result = await db.object_counts.update_one(
+        {"_id": last_record["_id"]},
+        {"$set": {
+            "object_count": new_count,
+            "processed_image_url": processed_image_url
+        }}
+    )
+
+    if update_result.modified_count == 0:
+        raise HTTPException(status_code=500, detail="Failed to update the record.")
+
+    # Log the successful update
+    logger.info(f"Record updated for category: {category} with new count: {new_count}")
+
+    return {"msg": f"Count and processed image URL updated for category: {category}", "updated_count": new_count}
