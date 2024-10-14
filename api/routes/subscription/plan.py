@@ -1,16 +1,17 @@
 import logging
-from fastapi import FastAPI, HTTPException, Depends, APIRouter, Request
-from typing import List, Optional
+from fastapi import HTTPException, Depends, APIRouter
+from typing import List
 import razorpay
-from pydantic import BaseModel, validator
-from razorpay.errors import BadRequestError, SignatureVerificationError
-from schemas import User, db
-from core.oauth2 import get_current_user
+from razorpay.errors import BadRequestError
+from core.db import db
+from models.user import User
 from config import settings
 from core.utils import check_admin_user
 from fastapi.responses import JSONResponse
-import time
 from datetime import datetime
+from models.subscriptions import PlanDetails, PlanResponse
+from core.razorpay import client
+
 
 router = APIRouter(
     prefix="/plans",
@@ -21,24 +22,6 @@ router = APIRouter(
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Razorpay client
-client = razorpay.Client(auth=(settings.TEST_RAZORPAY_API_KEY, settings.TEST_RAZORPAY_SECRET_KEY))
-
-# Pydantic models
-class PlanDetails(BaseModel):
-    name: str
-    amount: int  # Amount in INR
-    period: str
-    interval: int
-    description: Optional[str] = None
-
-
-class PlanResponse(BaseModel):
-    id: str
-    period: str
-    interval: int
-    item: dict
-    notes: dict
 
 @router.post("/create-plan", response_model=PlanResponse)
 async def create_subscription_plan(
@@ -78,6 +61,7 @@ async def create_subscription_plan(
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=500, detail="Unexpected error occurred")
+
 
 # 1. List all subscription plans (User landing page & plan selection)
 @router.get("/plans", response_model=List[PlanResponse])

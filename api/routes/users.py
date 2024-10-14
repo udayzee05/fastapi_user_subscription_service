@@ -1,14 +1,12 @@
 # library imports
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
-
 # module imports
 from core.oauth2 import get_current_user
-from schemas import User, UserResponse, db
+from core.db import db
+from models.user import User,UserResponse
 from core.utils import get_password_hash
 from core.send_email import send_registration_mail
-import secrets
 from datetime import datetime, timedelta
 
 router = APIRouter(

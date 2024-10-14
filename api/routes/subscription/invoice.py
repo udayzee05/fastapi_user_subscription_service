@@ -1,15 +1,13 @@
 import logging
-from fastapi import FastAPI, HTTPException, Depends, APIRouter, Request
-from pydantic import BaseModel
+from fastapi import HTTPException, Depends, APIRouter
 import razorpay
 from razorpay.errors import BadRequestError
-from schemas import User, db
+from core.db import db
+from core.razorpay import client
+from models.user import User
 from core.oauth2 import get_current_user
-from fastapi.responses import JSONResponse
-import time
-from datetime import datetime
 from config import settings
-
+from models.subscriptions import InvoiceCreateRequest, InvoiceResponse
 router = APIRouter(
     prefix="/invoice",
     tags=["Invoices"]
@@ -19,20 +17,8 @@ router = APIRouter(
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Razorpay client
-client = razorpay.Client(auth=(settings.TEST_RAZORPAY_API_KEY, settings.TEST_RAZORPAY_SECRET_KEY))
 
-# Pydantic model to define the invoice creation request
-class InvoiceCreateRequest(BaseModel):
-    subscription_id: str
 
-# Pydantic model to define the response
-class InvoiceResponse(BaseModel):
-    invoice_id: str
-    subscription_id: str
-    user_details: dict
-    service_details: dict
-    invoice_details: dict
 
 # Route to create an invoice for a subscription using only the subscription_id
 @router.post("/create-invoice", response_model=InvoiceResponse)

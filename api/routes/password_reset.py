@@ -2,7 +2,8 @@
 from fastapi import APIRouter, HTTPException, status
 
 # module imports
-from schemas import PasswordReset, PasswordResetRequest, db
+from models.user import PasswordReset, PasswordResetRequest
+from core.db import db
 from core.send_email import password_reset
 from core.oauth2 import create_access_token, get_current_user
 from core.utils import get_password_hash

@@ -1,15 +1,15 @@
 
 import logging
 from fastapi import Depends, HTTPException,UploadFile,File
-from schemas import User,db
+from core.db import db
+from models.user import User
 from core.oauth2 import get_current_user
 from PIL import Image
 import uuid
 import os
-from bson import ObjectId
 from api.core.aws import AWSConfig
 from fastapi import APIRouter
-from schemas import UserProfileUpdate, UserProfileResponse
+from models.user import UserProfileUpdate,UserProfileResponse
 
 
 router = APIRouter(prefix="/userProfile", tags=["User Profile"])

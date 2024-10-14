@@ -1,6 +1,5 @@
 
 import os
-from fastapi import BackgroundTasks
 from api.config import settings
 # pip install fastapi-mail python-dotenv python-multipart
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig

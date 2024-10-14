@@ -1,15 +1,17 @@
 import logging
-from fastapi import FastAPI, HTTPException, Depends, APIRouter, Request
-from typing import List, Optional
+from fastapi import HTTPException, Depends, APIRouter
+from typing import List
 import razorpay
-from pydantic import BaseModel
-from razorpay.errors import BadRequestError, SignatureVerificationError
-from schemas import User, db
+from razorpay.errors import BadRequestError
+from core.db import db
+from models.user import User
 from core.oauth2 import get_current_user
 from config import settings
 from fastapi.responses import JSONResponse
 import time
 from datetime import datetime
+from models.subscriptions import SubscriptionDetails, SubscriptionResponse,CancelSubscriptionRequest,SubscriptionDetailResponse
+from core.razorpay import client
 
 router = APIRouter(
     prefix="/subscribe",
@@ -20,30 +22,6 @@ router = APIRouter(
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Razorpay client
-client = razorpay.Client(auth=(settings.TEST_RAZORPAY_API_KEY, settings.TEST_RAZORPAY_SECRET_KEY))
-
-# Pydantic models
-
-class SubscriptionDetails(BaseModel):
-    plan_id: str
-    currency: str = 'INR'
-
-    
-
-class SubscriptionResponse(BaseModel):
-    subscription_id: str
-    user_id: str
-    plan_id: str
-    amount: int
-    customer_email: str
-    status: str
-    created_at: str  # Expecting a formatted string now
-    payment_link: Optional[str] = None
-    updated_at: Optional[str] = None
-    cancelled_at: Optional[str] = None
-
-from datetime import datetime
 
 def format_datetime(dt: datetime) -> str:
     """
@@ -161,10 +139,8 @@ async def subscribe_services(
 
 
 ###########################################################################################################################################
-from razorpay.errors import BadRequestError
 
-class CancelSubscriptionRequest(BaseModel):
-    subcription_id: str
+
 
 # Route to cancel the old subscription
 @router.post("/cancel-old-subscription")
@@ -229,6 +205,8 @@ async def cancel_old_subscription(user_id: str, subscription_id: str):
 
 
 #############################################################################################################################
+
+
 def format_timestamp(timestamp: float) -> str:
     """
     Convert a timestamp (float) to a formatted datetime string.
@@ -294,16 +272,7 @@ async def list_user_subscriptions(
 
 
 ##################################################################################################################################################
-from pydantic import BaseModel
-from datetime import datetime
-from typing import List, Optional
 
-class SubscriptionDetailResponse(BaseModel):
-    subscription_id: str
-    plan_name: str
-    status: str
-    start_date: Optional[datetime]  # Make start_date optional
-    end_date: Optional[datetime]    # Make end_date optional
 
 @router.get("/subscriptions/active", response_model=List[SubscriptionDetailResponse])
 async def get_active_subscriptions(
@@ -360,3 +329,52 @@ async def get_active_subscriptions(
     except Exception as e:
         logger.error(f"Error fetching active subscriptions: {str(e)}")
         raise HTTPException(status_code=500, detail="Error fetching active subscriptions")
+
+
+
+
+@router.get("/subscriptions/sync")
+async def sync_subscriptions_on_login(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Fetches all subscriptions of the current user, syncs their status from Razorpay, and updates the local database.
+    This route can be triggered when the user logs in, ensuring the database and Razorpay dashboard are in sync.
+    """
+    try:
+        # Fetch all subscriptions for the current user from the database
+        user_subscriptions = await db.subscriptions.find({
+            "user_id": current_user["_id"]
+        }).to_list(length=None)
+
+        if not user_subscriptions:
+            return {"message": "No subscriptions found to sync."}
+
+        # Loop through each subscription and fetch the latest status from Razorpay
+        for subscription in user_subscriptions:
+            subscription_id = subscription.get("subscription_id")
+            
+            try:
+                # Fetch the latest subscription details from Razorpay
+                razorpay_subscription = client.subscription.fetch(subscription_id)
+                
+                # Extract the latest status from Razorpay response
+                latest_status = razorpay_subscription['status']
+
+                # If the status has changed, update it in the local database
+                if latest_status != subscription['status']:
+                    await db.subscriptions.update_one(
+                        {"subscription_id": subscription_id},
+                        {"$set": {"status": latest_status}}
+                    )
+                    logger.info(f"Updated subscription {subscription_id} status to {latest_status} for user {current_user['_id']}")
+
+            except Exception as e:
+                logger.error(f"Error fetching subscription {subscription_id} from Razorpay: {str(e)}")
+                continue  # Skip this subscription if there's an error fetching the latest status
+
+        return {"message": "Subscriptions synced successfully."}
+
+    except Exception as e:
+        logger.error(f"Error syncing subscriptions for user {current_user['_id']}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error syncing subscriptions")

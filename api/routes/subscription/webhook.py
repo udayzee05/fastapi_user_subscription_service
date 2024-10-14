@@ -2,8 +2,9 @@ import logging
 from fastapi import HTTPException,APIRouter, Request
 import razorpay
 from razorpay.errors import  SignatureVerificationError
-from schemas import  db
+from core.db import db
 from config import settings
+from core.razorpay import client
 import time
 router = APIRouter(
     prefix="/webhook",
@@ -15,7 +16,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize Razorpay client
-client = razorpay.Client(auth=(settings.TEST_RAZORPAY_API_KEY, settings.TEST_RAZORPAY_SECRET_KEY))
 
 @router.post("/webhook")
 async def handle_webhook(request: Request):

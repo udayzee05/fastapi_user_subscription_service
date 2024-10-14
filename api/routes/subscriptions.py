@@ -4,7 +4,8 @@ from typing import List, Optional
 import razorpay
 from pydantic import BaseModel, validator
 from razorpay.errors import BadRequestError, SignatureVerificationError
-from schemas import User, db
+from core.db import db
+from models.user import User
 from core.oauth2 import get_current_user
 from config import settings
 from core.utils import check_admin_user

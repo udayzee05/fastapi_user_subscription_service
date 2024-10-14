@@ -1,24 +1,25 @@
 
 import logging
 
-from fastapi import Depends, Request, HTTPException
+from fastapi import Depends, HTTPException
 
-from schemas import User, db,ObjectCount,ObjectCountResponse,CountRequest
+from core.db import db
+from models.user import User
+from models.telescopic import ObjectCount, ObjectCountResponse,CountRequest
 from core.oauth2 import get_current_user
-
 from PIL import Image
 import cv2
-import base64
 import uuid
 from datetime import datetime,timedelta
 import os
 from api.services.telescopic import count_objects_with_yolo, get_segmented_pipes
 from api.core.aws import AWSConfig
-from api.core.system_logger import log_request_stats
 from fastapi import APIRouter
+from core.utils import valid_subscription_for_service, save_base64_image
 
+SERVICE_NAME = "telescopicPVCPipes"
 
-router = APIRouter(prefix="/telescopic", tags=["Telescopic"])
+router = APIRouter(prefix="/count", tags=["PVC Pipes"])
 
 # Logging configuration
 logging.basicConfig(
@@ -28,38 +29,6 @@ logger = logging.getLogger(__name__)
 
 
 aws_config = AWSConfig()
-
-async def save_base64_image(base64_str):
-    try:
-        image_data = base64.b64decode(base64_str)
-    except base64.binascii.Error:
-        logger.error("Invalid base64 format")
-        raise ValueError(
-            "Invalid base64 format. Please submit a valid base64-encoded image."
-        )
-
-    # Define the local path for saving the image
-    original_image_path = f"../static/original_{uuid.uuid4()}.png"
-
-    # Write the image data to a local file
-    with open(original_image_path, "wb") as f:
-        f.write(image_data)
-
-    bucket_name = "alvision-count"
-    object_name = f"count/original/original_{uuid.uuid4()}.png"
-
-    # Use the existing upload_to_s3 method
-    aws_config = AWSConfig()
-    original_image_url = aws_config.upload_to_s3(
-        original_image_path, bucket_name, object_name
-    )
-
-    logger.info(f"Original image saved to {original_image_url}")
-
-    # Optionally, remove the local file if not needed
-    os.remove(original_image_path)
-
-    return original_image_url
 
 
 # async def get_current_admin_user(user: dict = Depends(get_current_user)):
@@ -73,12 +42,22 @@ async def save_base64_image(base64_str):
 
    
 
-@router.post("/telescopic")
+@router.post(f"/{SERVICE_NAME}")
 async def count_with_yolo(
     count_request: CountRequest,
     user: User = Depends(get_current_user),
+    is_valid_subscription: bool = Depends(valid_subscription_for_service(SERVICE_NAME)),
 ):
-    original_image_url = await save_base64_image(count_request.base64_image)
+    """
+    Endpoint to count objects using YOLO for telescopic pipes. Requires the user to have an active subscription 
+    for the 'telescopic' service.
+    """
+    # Ensure the user has a valid subscription before proceeding
+    if not is_valid_subscription:
+        return {"message": "You do not have an active subscription for the telescopic service."}
+
+    # Save the original base64 image to S3
+    original_image_url = await save_base64_image(count_request.base64_image, SERVICE_NAME)
 
     segmented_base64 = get_segmented_pipes(count_request.base64_image)
    
@@ -101,7 +80,7 @@ async def count_with_yolo(
     processed_pil.save(processed_image_path)
 
     bucket_name = "alvision-count"
-    object_name = f"count/processed/processed_{uuid.uuid4()}.png"
+    object_name = f"count/{SERVICE_NAME}/processed/processed_{uuid.uuid4()}.png"
     processed_image_url = aws_config.upload_to_s3(
         processed_image_path, bucket_name, object_name
     )
@@ -120,7 +99,7 @@ async def count_with_yolo(
         original_image_url=original_image_url,
         processed_image_url=processed_image_url,
         user_id=user["_id"],
-        category="telescopic",
+        category=SERVICE_NAME,
     )
 
     # Save the ObjectCount instance to the database

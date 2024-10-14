@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     TEST_RAZORPAY_API_KEY: str
     TEST_RAZORPAY_SECRET_KEY: str
     RAZORPAY_WEBHOOK_SECRET: str
+    RAZORPAY_TEST_MODE: bool
     MAIL_USERNAME: str
     MAIL_PASSWORD: str
     MAIL_FROM: str

@@ -7,7 +7,8 @@ from fastapi.security import OAuth2PasswordBearer
 from api.config import settings
 
 # module imports
-from schemas import TokenData, db
+from core.db import db
+from models.user import TokenData
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 

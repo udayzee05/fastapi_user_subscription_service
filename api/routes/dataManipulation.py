@@ -1,6 +1,6 @@
 import logging
-from fastapi import Depends, Request, HTTPException
-from schemas import User, db
+from fastapi import Depends, HTTPException
+from core.db import db
 from core.oauth2 import get_current_user
 from bson import ObjectId
 from datetime import date, datetime
@@ -18,8 +18,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-
 
 
 @router.get("/no-of-requests")
