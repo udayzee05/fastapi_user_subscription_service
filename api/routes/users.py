@@ -2,11 +2,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.encoders import jsonable_encoder
 # module imports
-from core.oauth2 import get_current_user
-from core.db import db
-from models.user import User,UserResponse
-from core.utils import get_password_hash
-from core.send_email import send_registration_mail
+from api.core.oauth2 import get_current_user
+from api.core.db import db
+from api.models.user import User,UserResponse
+from api.core.utils import get_password_hash
+from api.core.send_email import send_registration_mail
 from datetime import datetime, timedelta
 
 router = APIRouter(

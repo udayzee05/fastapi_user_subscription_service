@@ -116,6 +116,7 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    subscribed_services: Optional[List[str]] = None
 
 class TokenData(BaseModel):
     id: Optional[str] = None

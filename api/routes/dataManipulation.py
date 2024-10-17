@@ -1,14 +1,14 @@
 import logging
 from fastapi import Depends, HTTPException
-from core.db import db
-from core.oauth2 import get_current_user
+from api.core.db import db
+from api.core.oauth2 import get_current_user
 from bson import ObjectId
 from datetime import date, datetime
 from fastapi import APIRouter
 
 from bson import ObjectId
 from fastapi import HTTPException, Depends
-from core.oauth2 import get_current_user
+from api.core.oauth2 import get_current_user
 
 
 router = APIRouter(prefix="/data-manipulation", tags=["Count Data Manipulation"])

@@ -1,10 +1,9 @@
 import logging
 from fastapi import HTTPException,APIRouter, Request
-import razorpay
 from razorpay.errors import  SignatureVerificationError
-from core.db import db
-from config import settings
-from core.razorpay import client
+from api.core.db import db
+from api.config import settings
+from api.core.razorpay import client
 import time
 router = APIRouter(
     prefix="/webhook",

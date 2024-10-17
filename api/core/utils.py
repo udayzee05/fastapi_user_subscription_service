@@ -4,15 +4,15 @@ import logging
 import base64
 import os
 import uuid
-from core.aws import AWSConfig
+from api.core.aws import AWSConfig
 from datetime import datetime
 import logging
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException,status
 
-from core.db import db
-from models.user import User
-from core.oauth2 import get_current_user
+from api.core.db import db
+from api.models.user import User
+from api.core.oauth2 import get_current_user
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

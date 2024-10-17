@@ -1,5 +1,5 @@
 import razorpay
-from config import settings
+from api.config import settings
 
 def get_razorpay_client(test_mode=settings.RAZORPAY_TEST_MODE):
     """

@@ -1,16 +1,14 @@
 import logging
 from fastapi import HTTPException, Depends, APIRouter
 from typing import List
-import razorpay
 from razorpay.errors import BadRequestError
-from core.db import db
-from models.user import User
-from config import settings
-from core.utils import check_admin_user
+from api.core.db import db
+from api.models.user import User
+from api.core.utils import check_admin_user
 from fastapi.responses import JSONResponse
 from datetime import datetime
-from models.subscriptions import PlanDetails, PlanResponse
-from core.razorpay import client
+from api.models.subscriptions import PlanDetails, PlanResponse
+from api.core.razorpay import client
 
 
 router = APIRouter(

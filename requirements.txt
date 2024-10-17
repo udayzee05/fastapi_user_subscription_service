@@ -1,5 +1,5 @@
 fastapi
-uvicorn[standard ]
+uvicorn[standard]
 pymongo
 motor
 ultralytics
@@ -12,3 +12,5 @@ boto3
 razorpay
 pillow
 apscheduler
+python-multipart
+opencv-python-headless

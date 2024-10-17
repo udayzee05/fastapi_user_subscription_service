@@ -9,7 +9,7 @@ import torch  # Required for tensor operations
 
 
 # Load the segmentation model for pipe segmentation
-pipe_segmentation_model = YOLO("../api/artifacts/Segmentation/PipeSegmentation.pt")
+pipe_segmentation_model = YOLO("api/artifacts/Segmentation/PipeSegmentation.pt")
 # Load the model for counting objects
 # counting_model = YOLO("models/nonTelescopic.pt")
 
@@ -63,7 +63,7 @@ def count_objects_with_yolo(base64_image):
     :return: Modified image with object count and a string of the count
     """
     # Initialize the YOLO model
-    model = YOLO("../api/artifacts/metalBars/mild_metal_bars.pt")
+    model = YOLO("api/artifacts/metalBars/mild_metal_bars.pt")
 
     
     # Decode the base64 image to a numpy array

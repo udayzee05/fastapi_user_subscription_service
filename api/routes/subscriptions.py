@@ -4,11 +4,11 @@ from typing import List, Optional
 import razorpay
 from pydantic import BaseModel, validator
 from razorpay.errors import BadRequestError, SignatureVerificationError
-from core.db import db
-from models.user import User
-from core.oauth2 import get_current_user
-from config import settings
-from core.utils import check_admin_user
+from api.core.db import db
+from api.models.user import User
+from api.core.oauth2 import get_current_user
+from api.config import settings
+from api.core.utils import check_admin_user
 from fastapi.responses import JSONResponse
 import time
 from datetime import datetime

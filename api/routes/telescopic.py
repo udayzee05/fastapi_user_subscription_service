@@ -3,10 +3,10 @@ import logging
 
 from fastapi import Depends, HTTPException
 
-from core.db import db
-from models.user import User
-from models.telescopic import ObjectCount, ObjectCountResponse,CountRequest
-from core.oauth2 import get_current_user
+from api.core.db import db
+from api.models.user import User
+from api.models.telescopic import ObjectCount, ObjectCountResponse,CountRequest
+from api.core.oauth2 import get_current_user
 from PIL import Image
 import cv2
 import uuid
@@ -15,7 +15,7 @@ import os
 from api.services.telescopic import count_objects_with_yolo, get_segmented_pipes
 from api.core.aws import AWSConfig
 from fastapi import APIRouter
-from core.utils import valid_subscription_for_service, save_base64_image
+from api.core.utils import valid_subscription_for_service, save_base64_image
 
 SERVICE_NAME = "telescopicPVCPipes"
 

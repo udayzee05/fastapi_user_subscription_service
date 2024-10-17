@@ -15,7 +15,7 @@ else:
     pathlib.WindowsPath = pathlib.PosixPath
 
 # Load the segmentation model for pipe segmentation
-pipe_segmentation_model = YOLO("../api/artifacts/Segmentation/PipeSegmentation.pt")
+pipe_segmentation_model = YOLO("api/artifacts/Segmentation/PipeSegmentation.pt")
 # Load the model for counting objects
 # counting_model = YOLO("models/nonTelescopic.pt")
 
@@ -62,7 +62,7 @@ def get_segmented_pipes(base64_image):
 
 def count_objects_with_yolo(base64_image):
 
-    return process_image_base64_and_count(base64_image, "../api/artifacts/PVCPipeDetection/telescopic.pt")
+    return process_image_base64_and_count(base64_image, "api/artifacts/PVCPipeDetection/telescopic.pt")
 
 
 def process_image_base64_and_count(base64_image, model_path, iou_threshold=0.2):
