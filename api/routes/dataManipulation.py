@@ -115,7 +115,6 @@ async def get_user_data_by_date_and_category(
 async def update_count(
     increment: int, 
     processed_image_url: str, 
-    category: str,  # Category to capture and filter records
     user: dict = Depends(get_current_user)  # Retrieve the current logged-in user
 ):
     """
@@ -126,12 +125,12 @@ async def update_count(
 
     # Query the last record for the user and category
     last_record = await db.object_counts.find_one(
-        {"user_id": user_id, "category": category},
+        {"user_id": user_id},
         sort=[("timestamp", -1)]  # Sort by timestamp to get the latest record
     )
 
     if not last_record:
-        raise HTTPException(status_code=404, detail=f"No records found for category: {category}.")
+        raise HTTPException(status_code=404, detail="No records found for category")
 
     # Extract the current count and increment it
     current_count = last_record["object_count"]
@@ -150,6 +149,6 @@ async def update_count(
         raise HTTPException(status_code=500, detail="Failed to update the record.")
 
     # Log the successful update
-    logger.info(f"Record updated for category: {category} with new count: {new_count}")
+    logger.info(f"Record updated successfully with new count: {new_count}")
 
-    return {"msg": f"Count and processed image URL updated for category: {category}", "updated_count": new_count}
+    return {"msg": f"Count and processed image URL updated", "updated_count": new_count}

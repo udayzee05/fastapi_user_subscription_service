@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 # module imports
-from api.routes import users, auth, password_reset, NonTelescopicPipe, telescopic, mildSteelBars, dataManipulation, userProfile, testserv,workorder
+from api.routes import users, auth, password_reset, NonTelescopicPipe, telescopic, mildSteelBars, dataManipulation, userProfile, testserv,workorder,metalSquarePipe
 from api.routes.subscription import plan, webhook, subscribe, invoice
 
 # initialize an app
@@ -21,7 +21,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*","Authorization", "Content-Type"],
 )
 
 # Construct the path for the static directory
@@ -36,9 +36,14 @@ app.include_router(users.router)
 app.include_router(userProfile.router)
 app.include_router(auth.router)
 app.include_router(password_reset.router)
+
+
+################Services################
 app.include_router(NonTelescopicPipe.router)
 app.include_router(telescopic.router)
 app.include_router(mildSteelBars.router)
+app.include_router(metalSquarePipe.router)
+
 app.include_router(testserv.router)
 app.include_router(workorder.router)
 
@@ -54,5 +59,9 @@ def get():
     return {"msg": "Welcome to Alluvium AI Services Platform"}
 
 # Run the application
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    try:
+        uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, workers=1)
+    except KeyboardInterrupt:
+        print("Server stopped by user.")

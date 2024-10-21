@@ -8,7 +8,7 @@ from api.core.aws import AWSConfig
 import uuid
 from api.models.mildSteelBars import ObjectCount, ObjectCountResponse
 from api.core.oauth2 import get_current_user
-from api.core.utils import save_base64_image
+from api.core.utils import save_base64_image,check_valid_subscription
 
 import logging
 
@@ -39,11 +39,16 @@ class CountRequest(BaseModel):
 @router.post(f"/count/{SERVICE_NAME}")
 async def count_with_yolo(
     count_request: CountRequest, 
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_current_user),
+    is_valid_subscription: bool = Depends(check_valid_subscription)
 ):
     """
     Count objects for '{SERVICE_NAME}' service and associate result with a work order.
     """
+    if not is_valid_subscription:
+        return {"message": "You do not have an active subscription for the NonTelescopicPipe service."}
+
+
     # Fetch the work order
     work_order = await db["work_orders"].find_one(
         {"work_order_id": count_request.work_order_id, "user_id": ObjectId(user["_id"])}

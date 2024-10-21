@@ -15,7 +15,7 @@ import os
 from api.services.telescopic import count_objects_with_yolo, get_segmented_pipes
 from api.core.aws import AWSConfig
 from fastapi import APIRouter
-from api.core.utils import valid_subscription_for_service, save_base64_image
+from api.core.utils import check_valid_subscription, save_base64_image
 
 SERVICE_NAME = "telescopicPVCPipes"
 
@@ -46,7 +46,7 @@ aws_config = AWSConfig()
 async def count_with_yolo(
     count_request: CountRequest,
     user: User = Depends(get_current_user),
-    is_valid_subscription: bool = Depends(valid_subscription_for_service(SERVICE_NAME)),
+    is_valid_subscription: bool = Depends(check_valid_subscription),
 ):
     """
     Endpoint to count objects using YOLO for telescopic pipes. Requires the user to have an active subscription 

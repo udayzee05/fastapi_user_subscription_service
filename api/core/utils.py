@@ -41,28 +41,44 @@ async def check_admin_user(user: dict = Depends(get_current_user)):
 
 # Dependency to check if the user has a valid subscription
 async def check_valid_subscription(current_user: User = Depends(get_current_user)):
-    """
-    Dependency function to check if the user has an active or completed subscription.
-    """
     try:
-        # Fetch user's subscriptions from the database
-        user_subscriptions = await db.subscriptions.find({"user_id": current_user["_id"]}).to_list(length=None)
-        
-        # Check if any subscription is active or completed
-        valid_subscription = any(sub['status'] in ["active"] for sub in user_subscriptions)
-        
-        if not valid_subscription:
+        # Ensure the user is authenticated
+        if not current_user or not current_user.get("_id"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid user or not authenticated."
+            )
+
+        # Fetch subscriptions from the database
+        user_subscriptions = await db.subscriptions.find(
+            {"user_id": current_user["_id"]}
+        ).to_list(length=None)
+
+        # Log the fetched subscriptions for debugging
+        # logger.info(f"Subscriptions for user {current_user['_id']}: {user_subscriptions}")
+
+        # Check if any subscription is active
+        if not any(sub['status'] == "active" for sub in user_subscriptions):
+            # Log the 403 error
+            logger.warning("Access denied: No active or completed subscription found.")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied: No active or completed subscription found."
             )
-        
-        return True  # Return True if the user has a valid subscription
-    
+
+        return True  # Subscription is valid
+
+    except HTTPException as http_exc:
+        # Re-raise known HTTP exceptions without modification
+        raise http_exc
+
     except Exception as e:
-        logger.error(f"Error while checking subscription: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error checking subscription status")
-    
+        # Log unexpected errors with full traceback
+        logger.exception(f"Unexpected error while checking subscription: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while checking subscription status."
+        )
 
 def valid_subscription_for_service(service_base_name: str):
     """

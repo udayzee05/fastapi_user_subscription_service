@@ -33,7 +33,7 @@ def get_segmented_pipes(base64_image):
             bbox = bboxes[0]  # Assuming only one major region
             mask = masks[0]
             cls = clss[0]
-            annotator.seg_bbox(mask=mask, mask_color=colors(int(cls), True), det_label=pipe_segmentation_model.model.names[int(cls)])
+            annotator.seg_bbox(mask=mask, mask_color=colors(int(cls), True), label=pipe_segmentation_model.model.names[int(cls)])
            
             # Crop the bounding box region with a 20-pixel margin
             x, y, w, h = bbox
