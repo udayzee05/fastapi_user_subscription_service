@@ -1,7 +1,6 @@
-# library imports
-from fastapi import APIRouter, HTTPException, status
-
-# module imports
+# Library imports
+from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.security import OAuth2PasswordRequestForm
 from api.models.user import PasswordReset, PasswordResetRequest
 from api.core.db import db
 from api.core.send_email import password_reset
@@ -13,61 +12,57 @@ router = APIRouter(
     tags=["Password Reset"]
 )
 
-
 @router.post("/request/", response_description="Password reset request")
 async def reset_request(user_email: PasswordResetRequest):
+    # Find user by email
     user = await db["users"].find_one({"email": user_email.email})
-
-    print(user)
-
-    if user is not None:
-        token = create_access_token({"id": user["_id"]})
-
-        reset_link = f"http://locahost:8000/reset?token={token}"
-
-        print("Hello")
-
-        await password_reset("Password Reset", user["email"],
-            {
-                "title": "Password Reset",
-                "name": user["name"],
-                "reset_link": reset_link
-            }
-        )
-        return {"msg": "Email has been sent with instructions to reset your password."}
-
-    else:
+    
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Your details not found, invalid email address"
         )
 
+    # Create a reset token
+    token = create_access_token({"id": str(user["_id"])})
+    # reset_link = f"http://localhost:8000/reset?token={token}"
+    reset_link = f"http://alvision-reset-password.s3-website.ap-south-1.amazonaws.com/reset?token={token}"
+      # Corrected 'localhost' spelling
+
+    # Send password reset email
+    await password_reset("Password Reset", user["email"],
+        {
+            "title": "Password Reset",
+            "name": user["name"],
+            "reset_link": reset_link
+        }
+    )
+    return {"msg": "Email has been sent with instructions to reset your password."}
+
 
 @router.put("/reset/", response_description="Password reset")
-async def reset(token: str, new_password: PasswordReset):
+async def reset_password(token: str, new_password: PasswordReset):
+    # Verify the token and retrieve the user
+    user = await get_current_user(token)
 
-    request_data = {k: v for k, v in new_password.dict().items()
-                    if v is not None}
+    print("i am here")
+    
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
-    # get the hashed version of the password
-    request_data["password"] = get_password_hash(request_data["password"])
+    # Hash the new password
+    hashed_password = get_password_hash(new_password.password)
 
-    if len(request_data) >= 1:
-        # use token to get the current user
-        user = await get_current_user(token)
+    # Update the password in the database
+    update_result = await db["users"].update_one(
+        {"_id": user["_id"]}, {"$set": {"password": hashed_password}}
+    )
 
-        # update the password of the current user
-        update_result = await db["users"].update_one({"_id": user["_id"]}, {"$set": request_data})
+    # Check if the password was successfully updated
+    if update_result.modified_count != 1:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update the password"
+        )
 
-        if update_result.modified_count == 1:
-            # get the newly updated current user and return as a response
-            updated_student = await db["users"].find_one({"_id": user["_id"]})
-            if(updated_student) is not None:
-                return updated_student
-
-    existing_user = await db["users"].find_one({"_id": user["_id"]})
-    if(existing_user) is not None:
-        return existing_user
-
-    # Raise error if the user can not be found in the database
-    raise HTTPException(status_code=404, detail=f"User not found")
+    return {"msg": "Password successfully reset"}

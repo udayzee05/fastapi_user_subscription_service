@@ -5,7 +5,7 @@ import base64
 import os
 import uuid
 from api.core.aws import AWSConfig
-from datetime import datetime
+from datetime import datetime,timezone
 import logging
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException,status
@@ -49,6 +49,20 @@ async def check_valid_subscription(current_user: User = Depends(get_current_user
                 detail="Invalid user or not authenticated."
             )
 
+        # Check if the user is within the trial period
+        trial_start = current_user.get("trial_start_date")
+        trial_end = current_user.get("trial_end_date")
+
+        if trial_start and trial_end:
+            # Ensure both trial_start and trial_end are timezone-aware (UTC)
+            trial_start = trial_start.replace(tzinfo=timezone.utc)
+            trial_end = trial_end.replace(tzinfo=timezone.utc)
+
+            now = datetime.now(timezone.utc)  # Current time in UTC
+            if trial_start <= now <= trial_end:
+                # User is still within the trial period, allow access
+                return True
+
         # Fetch subscriptions from the database
         user_subscriptions = await db.subscriptions.find(
             {"user_id": current_user["_id"]}
@@ -66,7 +80,7 @@ async def check_valid_subscription(current_user: User = Depends(get_current_user
                 detail="Access denied: No active or completed subscription found."
             )
 
-        return True  # Subscription is valid
+        return True  # Subscription or trial is valid
 
     except HTTPException as http_exc:
         # Re-raise known HTTP exceptions without modification
@@ -80,40 +94,41 @@ async def check_valid_subscription(current_user: User = Depends(get_current_user
             detail="An unexpected error occurred while checking subscription status."
         )
 
-def valid_subscription_for_service(service_base_name: str):
-    """
-    Check if the user has an active subscription for a given service (regardless of its duration).
-    This function will check for 'service_base_name' (e.g., 'TelescopicPipe') with different subscription durations.
-    """
-    async def check(user: User = Depends(get_current_user)):
-        try:
-            # Fetch the user's subscribed services from the database
-            user_data = await db.users.find_one({"_id": user["_id"]})
-            subscribed_services = user_data.get("subscribed_services", [])
 
-            # Define the possible subscription types for the service (monthly, quarterly, yearly)
-            possible_subscriptions = [
-                f"{service_base_name} monthly",
-                f"{service_base_name} quarterly",
-                f"{service_base_name} half-yearly",
-                f"{service_base_name} yearly"
-            ]
+# def valid_subscription_for_service(service_base_name: str):
+#     """
+#     Check if the user has an active subscription for a given service (regardless of its duration).
+#     This function will check for 'service_base_name' (e.g., 'TelescopicPipe') with different subscription durations.
+#     """
+#     async def check(user: User = Depends(get_current_user)):
+#         try:
+#             # Fetch the user's subscribed services from the database
+#             user_data = await db.users.find_one({"_id": user["_id"]})
+#             subscribed_services = user_data.get("subscribed_services", [])
 
-            print(possible_subscriptions)
+#             # Define the possible subscription types for the service (monthly, quarterly, yearly)
+#             possible_subscriptions = [
+#                 f"{service_base_name} monthly",
+#                 f"{service_base_name} quarterly",
+#                 f"{service_base_name} half-yearly",
+#                 f"{service_base_name} yearly"
+#             ]
 
-            # Check if the user has any active subscription for the service (regardless of duration)
-            valid_subscription = any(service in subscribed_services for service in possible_subscriptions)
+#             print(possible_subscriptions)
 
-            if not valid_subscription:
-                logging.error(f"Access denied: No active subscription found for {service_base_name}.")
-                return False  # No active subscription found
-            return True  # Valid subscription found
+#             # Check if the user has any active subscription for the service (regardless of duration)
+#             valid_subscription = any(service in subscribed_services for service in possible_subscriptions)
 
-        except Exception as e:
-            logging.error(f"Error while checking subscription for {service_base_name}: {str(e)}")
-            raise HTTPException(status_code=500, detail="Error checking subscription status")
+#             if not valid_subscription:
+#                 logging.error(f"Access denied: No active subscription found for {service_base_name}.")
+#                 return False  # No active subscription found
+#             return True  # Valid subscription found
+
+#         except Exception as e:
+#             logging.error(f"Error while checking subscription for {service_base_name}: {str(e)}")
+#             raise HTTPException(status_code=500, detail="Error checking subscription status")
     
-    return check
+#     return check
 
 
 

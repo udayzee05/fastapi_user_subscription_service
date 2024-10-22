@@ -30,16 +30,6 @@ logger = logging.getLogger(__name__)
 
 aws_config = AWSConfig()
 
-
-# async def get_current_admin_user(user: dict = Depends(get_current_user)):
-#     if not isinstance(user, User):
-#         user = User(**user)
-#     if user.role != "admin":
-#         raise HTTPException(
-#             status_code=403, detail="Access forbidden: Requires admin role"
-#         )
-#     return user
-
    
 
 @router.post(f"/{SERVICE_NAME}")

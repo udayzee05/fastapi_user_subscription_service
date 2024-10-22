@@ -1,15 +1,13 @@
-from fastapi import APIRouter, Depends, status, HTTPException,Request
+from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from api.models.user import Token
 from api.core.db import db
-from api.core.oauth2 import create_access_token
+from api.core.oauth2 import create_access_token,oauth2_scheme
 from api.core.utils import verify_password
+from datetime import datetime, timezone
 import logging
-from api.core.oauth2 import oauth2_scheme
-router = APIRouter(
-    prefix="/login",
-    tags=["Authentication"]
-)
+
+router = APIRouter(prefix="/login", tags=["Authentication"])
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 @router.post("", response_model=Token, status_code=status.HTTP_200_OK)
 async def login(user_credentials: OAuth2PasswordRequestForm = Depends()):
-    # Fetch user from database
+    # Fetch user from the database
     user = await db["users"].find_one({
         "$or": [{"name": user_credentials.username}, {"email": user_credentials.username}]
     })
@@ -29,17 +27,32 @@ async def login(user_credentials: OAuth2PasswordRequestForm = Depends()):
             detail="Invalid username or password"
         )
 
+    # Check for active subscription
+    user_id = user["_id"]
+    subscriptions = await db["subscriptions"].find({"user_id": user_id}).to_list(length=None)
+    subscription_active = any(sub["status"] == "active" for sub in subscriptions)
+
+    # Calculate remaining trial days (if applicable)
+    now = datetime.now(timezone.utc)
+    trial_end = user.get("trial_end_date")
+    days_remaining_in_trial = 0
+
+    if trial_end:
+        trial_end_date = trial_end.replace(tzinfo=timezone.utc)
+        if now <= trial_end_date:
+            days_remaining_in_trial = (trial_end_date - now).days
+
     # Create access token
-    access_token = create_access_token(data={"id": str(user["_id"])})
-    subscribed_services = user.get("subscribed_services", [])
+    access_token = create_access_token(data={"id": str(user_id)})
 
     logger.info("User %s logged in successfully", user_credentials.username)
 
-    # Return token response
+    # Return response with subscription status and trial days remaining
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "subscribed_services": subscribed_services
+        "subscription_active": subscription_active,
+        "days_remaining_in_trial": days_remaining_in_trial
     }
 
 @router.post("/logout", status_code=status.HTTP_200_OK)

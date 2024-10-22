@@ -6,7 +6,7 @@ from api.models.user import User
 from api.core.db import db
 from api.models.mildSteelBars import ObjectCount, ObjectCountResponse,CountRequest
 from api.core.oauth2 import get_current_user
-from api.core.utils import valid_subscription_for_service, save_base64_image,check_valid_subscription
+from api.core.utils import save_base64_image,check_valid_subscription
 from PIL import Image
 import cv2
 
