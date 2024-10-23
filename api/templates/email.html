@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Email Template</title>
-    <!-- Bootstrap CSS -->
+    <title>Modern Email Template</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -12,50 +11,192 @@
             padding: 0;
             box-sizing: border-box;
             font-family: 'Arial', sans-serif;
-            background-color: #f4f4f4;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
         }
+
         .email-wrapper {
-            background-color: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                0 0 100px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transform: perspective(1000px) rotateX(0deg);
+            transition: transform 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .email-wrapper:hover {
+            transform: perspective(1000px) rotateX(2deg) translateY(-5px);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0061a8 0%, #003566 100%);
+            color: #ffffff;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
             overflow: hidden;
         }
-        .header {
-            background-color: #003566;
-            color: #ffffff;
-            padding: 20px;
-            text-align: center;
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 48%, rgba(255,255,255,0.1) 50%, transparent 52%);
+            background-size: 200% 200%;
+            animation: shine 3s infinite;
         }
+
+        @keyframes shine {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .header img {
+            max-width: 120px;
+            margin-bottom: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .header img:hover {
+            transform: translateY(-5px);
+        }
+
         .header h1 {
-            margin: 0;
-            font-size: 28px;
+            margin: 10px 0 0;
+            font-size: 32px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
         }
+
         .content {
-            padding: 30px;
+            padding: 50px 40px;
             text-align: center;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
         }
+
+        .welcome-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 
+                0 10px 20px rgba(0,0,0,0.05),
+                0 6px 6px rgba(0,0,0,0.1);
+            transform: translateY(0);
+            transition: all 0.3s ease;
+        }
+
+        .welcome-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 
+                0 15px 30px rgba(0,0,0,0.1),
+                0 8px 8px rgba(0,0,0,0.1);
+        }
+
         .content h3 {
             margin: 0 0 20px;
-            font-size: 24px;
-            color: #333333;
+            font-size: 28px;
+            color: #2d3748;
+            font-weight: 600;
         }
+
         .content p {
-            margin: 0 0 20px;
+            margin: 0 0 25px;
             font-size: 16px;
-            color: #666666;
+            color: #4a5568;
+            line-height: 1.8;
         }
+
         .button {
             display: inline-block;
-            padding: 10px 20px;
+            padding: 15px 40px;
             margin-top: 20px;
-            background-color: #003566;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff4f42 100%);
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px rgba(255,79,66,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(255,79,66,0.4);
             color: #ffffff;
             text-decoration: none;
-            border-radius: 5px;
-            transition: background-color 0.3s;
         }
-        .button:hover {
-            background-color: #00264d;
+
+        .button::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: rgba(255,255,255,0.2);
+            transform: rotate(45deg);
+            transition: all 0.3s ease;
+        }
+
+        .button:hover::after {
+            transform: rotate(45deg) translate(50%, 50%);
+        }
+
+        .footer {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 30px;
+            text-align: center;
+            font-size: 14px;
+            color: #6c757d;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .footer a {
+            color: #0061a8;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: #003566;
+            text-decoration: none;
+        }
+
+        .social-icons {
+            margin: 20px 0;
+        }
+
+        .social-icons a {
+            display: inline-block;
+            margin: 0 10px;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            border-radius: 50%;
+            background: white;
+            color: #003566;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .social-icons a:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.2);
         }
     </style>
 </head>
@@ -63,21 +204,39 @@
     <div class="container py-5">
         <div class="row justify-content-center">
             <div class="col-12 col-md-8 email-wrapper">
+                <!-- Header with Logo -->
                 <div class="header">
+                    <img src="https://alvision-count.s3.ap-south-1.amazonaws.com/Alluvium+Logo-01+(1).png" alt="Company Logo">
                     <h1>{{ title }}</h1>
                 </div>
+                
+                <!-- Main Content -->
                 <div class="content">
-                    <h3>Hi {{ name }}!</h3>
-                    <p>Welcome to the community, your registration has been successful. Enjoy our services.</p>
-                    <a href="#" class="button">Get Started</a>
+                    <div class="welcome-card">
+                        <h3>Welcome, {{ name }}! 🎉</h3>
+                        <p>We're absolutely thrilled to have you join our community! Your registration has been successfully completed, and an exciting journey awaits. Our platform is designed to provide you with the best possible experience, and we can't wait to see what you'll achieve.</p>
+                    </div>
+                    <a href="#" class="button">Begin Your Journey</a>
+                </div>
+                
+                <!-- Footer -->
+                <div class="footer">
+                    <div class="social-icons">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                    <p>Questions? We're here to help! <a href="#">Contact our support team</a></p>
+                    <p>&copy; 2024 Your Company. All rights reserved.</p>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Bootstrap JS, Popper.js, and jQuery -->
+    
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
 </body>
 </html>

@@ -20,7 +20,7 @@ import os
 
 SERVICE_NAME = "testServe"
 
-router = APIRouter(prefix="/count", tags=["testServe"])
+router = APIRouter(tags=["Count"])
 
 
 # Logging configuration

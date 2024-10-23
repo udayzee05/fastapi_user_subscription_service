@@ -54,7 +54,6 @@ async def login(user_credentials: OAuth2PasswordRequestForm = Depends()):
         "subscription_active": subscription_active,
         "days_remaining_in_trial": days_remaining_in_trial
     }
-
 @router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(token: str = Depends(oauth2_scheme)):
     """Logout user and blacklist the JWT token."""

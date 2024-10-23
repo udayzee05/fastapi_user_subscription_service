@@ -18,7 +18,7 @@ from fastapi import APIRouter
 
 SERVICE_NAME = "nonTelescopicPVCPipes"
 
-router = APIRouter(prefix="/count", tags=["PVC Pipes"])
+router = APIRouter(tags=["Count"])
 
 # Logging configuration
 logging.basicConfig(

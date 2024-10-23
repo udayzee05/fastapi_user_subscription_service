@@ -19,7 +19,7 @@ from fastapi import APIRouter
 
 SERVICE_NAME = "mildSteelBars"
 
-router = APIRouter(prefix="/count", tags=["mildSteelBars"])
+router = APIRouter(tags=["Count"])
 
 
 # Logging configuration

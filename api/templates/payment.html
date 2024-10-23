@@ -1,68 +1,349 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
-    <title>Razorpay Payment Integration</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlVision Count Subscription</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         body {
+            background: linear-gradient(135deg, #f6f9fc 0%, #ecf0f5 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.1),
+                0 0 100px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3399cc 0%, #2980b9 100%);
+            padding: 40px 30px;
             text-align: center;
-            font-size: xx-large;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 20px solid #2980b9;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo i {
+            font-size: 40px;
+            color: #3399cc;
         }
 
         h1 {
-            color: blue;
-            font-size: xx-large;
+            color: white;
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .content {
+            padding: 40px;
+            text-align: center;
+        }
+
+        .subscription-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .subscription-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .price {
+            font-size: 48px;
+            color: #2980b9;
+            font-weight: 700;
+            margin: 20px 0;
+        }
+
+        .currency {
+            font-size: 24px;
+            vertical-align: super;
+        }
+
+        .features {
+            list-style: none;
+            margin: 20px 0;
+            padding: 0;
+        }
+
+        .features li {
+            margin: 10px 0;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .features li i {
+            color: #2ecc71;
+            margin-right: 10px;
+        }
+
+        .payment-form {
+            margin-top: 30px;
+        }
+
+        .pay-button {
+            background: linear-gradient(135deg, #3399cc 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px rgba(41, 128, 185, 0.2);
+        }
+
+        .pay-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(41, 128, 185, 0.3);
+            background: linear-gradient(135deg, #2980b9 0%, #2472a4 100%);
+        }
+
+        .secure-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .secure-badge i {
+            color: #2ecc71;
+            margin-right: 8px;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .footer p {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3399cc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fff5f5;
+            border-left: 4px solid #ff4d4d;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: left;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .error-message h4 {
+            color: #ff4d4d;
+            margin-bottom: 5px;
+        }
+
+        .error-message p {
+            color: #666;
+            margin: 0;
+            font-size: 14px;
         }
     </style>
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 
 <body>
-    <h1>Subscribe to AlVision Count</h1>
-    <form id="payment-form" action="http://localhost:8000/subscriptions/payment/success" method="POST">
-        <input type="hidden" name="razorpay_order_id" id="razorpay_order_id">
-        <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id">
-        <input type="hidden" name="razorpay_signature" id="razorpay_signature">
-        <input type="hidden" name="email" value="{{ email }}">
-        <input type="hidden" name="order_id" value="{{ order_id }}">
-        <input type="hidden" name="subscription_type" value="{{ subscription_type }}">
-    </form>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <h1>AlVision Count</h1>
+            <p class="subtitle">Subscribe to unlock premium features</p>
+        </div>
 
+        <div class="content">
+            <div class="subscription-card">
+                <h2>Premium Subscription</h2>
+                <div class="price">
+                    <span class="currency">₹</span>{{ amount|floatformat:2 }}
+                </div>
+                <ul class="features">
+                    <li><i class="fas fa-check-circle"></i> Advanced Analytics</li>
+                    <li><i class="fas fa-check-circle"></i> Priority Support</li>
+                    <li><i class="fas fa-check-circle"></i> Custom Reports</li>
+                    <li><i class="fas fa-check-circle"></i> Data Export</li>
+                </ul>
+
+                <form id="payment-form" action="http://localhost:8000/subscriptions/payment/success" method="POST">
+                    <input type="hidden" name="razorpay_order_id" id="razorpay_order_id">
+                    <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id">
+                    <input type="hidden" name="razorpay_signature" id="razorpay_signature">
+                    <input type="hidden" name="email" value="{{ email }}">
+                    <input type="hidden" name="order_id" value="{{ order_id }}">
+                    <input type="hidden" name="subscription_type" value="{{ subscription_type }}">
+                    <button type="button" class="pay-button" onclick="openRazorpay()">
+                        <i class="fas fa-lock"></i> Pay Securely
+                    </button>
+                </form>
+            </div>
+
+            <div class="secure-badge">
+                <i class="fas fa-shield-alt"></i>
+                Secured by Razorpay
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 AlVision Count. All rights reserved.</p>
+            <p>Need help? <a href="#">Contact Support</a></p>
+        </div>
+    </div>
+
+    <div class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="error-message">
+        <h4>Payment Failed</h4>
+        <p id="error-details"></p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
     <script>
-        var options = {
-            "key": "{{ razorpay_key }}", // Enter the Key ID generated from the Dashboard
-            "amount": "{{ amount }}", // Amount is in currency subunits. Default currency is INR.
-            "currency": "INR",
-            "name": "Alvision Count",
-            "description": "Subscription",
-            "order_id": "{{ order_id }}", //This is a sample Order ID. Pass the `id` obtained in the response of Step 1
-            "handler": function (response) {
-                document.getElementById('razorpay_order_id').value = response.razorpay_order_id;
-                document.getElementById('razorpay_payment_id').value = response.razorpay_payment_id;
-                document.getElementById('razorpay_signature').value = response.razorpay_signature;
-                document.getElementById('payment-form').submit();
-            },
-            "prefill": {
-                "name": "{{ email }}",
-                "email": "{{ email }}",
-            },
-            "theme": {
-                "color": "#3399cc"
-            }
-        };
-        var rzp1 = new Razorpay(options);
-        rzp1.on('payment.failed', function (response) {
-            alert(response.error.code);
-            alert(response.error.description);
-            alert(response.error.source);
-            alert(response.error.step);
-            alert(response.error.reason);
-            alert(response.error.metadata.order_id);
-            alert(response.error.metadata.payment_id);
-        });
-        rzp1.open();
+        function showLoading() {
+            document.querySelector('.loading-overlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.querySelector('.loading-overlay').style.display = 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.querySelector('.error-message');
+            document.getElementById('error-details').textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function openRazorpay() {
+            var options = {
+                "key": "{{ razorpay_key }}",
+                "amount": "{{ amount }}",
+                "currency": "INR",
+                "name": "Alvision Count",
+                "description": "Premium Subscription",
+                "order_id": "{{ order_id }}",
+                "handler": function (response) {
+                    showLoading();
+                    document.getElementById('razorpay_order_id').value = response.razorpay_order_id;
+                    document.getElementById('razorpay_payment_id').value = response.razorpay_payment_id;
+                    document.getElementById('razorpay_signature').value = response.razorpay_signature;
+                    document.getElementById('payment-form').submit();
+                },
+                "prefill": {
+                    "name": "{{ email }}",
+                    "email": "{{ email }}",
+                },
+                "theme": {
+                    "color": "#3399cc"
+                },
+                "modal": {
+                    "ondismiss": function() {
+                        hideLoading();
+                    }
+                }
+            };
+            
+            var rzp1 = new Razorpay(options);
+            rzp1.on('payment.failed', function (response) {
+                hideLoading();
+                showError(response.error.description);
+            });
+            rzp1.open();
+        }
     </script>
 </body>
-
 </html>

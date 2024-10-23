@@ -19,7 +19,7 @@ from api.core.utils import check_valid_subscription, save_base64_image
 
 SERVICE_NAME = "telescopicPVCPipes"
 
-router = APIRouter(prefix="/count", tags=["PVC Pipes"])
+router = APIRouter(tags=["Count"])
 
 # Logging configuration
 logging.basicConfig(

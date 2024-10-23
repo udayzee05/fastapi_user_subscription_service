@@ -4,7 +4,7 @@ import logging
 from fastapi import Depends, HTTPException
 from api.models.user import User
 from api.core.db import db
-from api.models.mildSteelBars import ObjectCount, ObjectCountResponse,CountRequest
+from api.models.metalSquarePipe import ObjectCount, ObjectCountResponse,CountRequest
 from api.core.oauth2 import get_current_user
 from api.core.utils import save_base64_image,check_valid_subscription
 from PIL import Image
@@ -19,7 +19,7 @@ from fastapi import APIRouter
 
 SERVICE_NAME = "metalSqaurePipe"
 
-router = APIRouter(prefix="/count", tags=[f"{SERVICE_NAME}"])
+router = APIRouter(tags=["Count"])
 
 
 # Logging configuration

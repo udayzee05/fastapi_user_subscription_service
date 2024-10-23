@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 # module imports
-from api.routes import users, auth, password_reset, NonTelescopicPipe, telescopic, mildSteelBars, dataManipulation, userProfile, testserv,workorder,metalSquarePipe
+from api.routes import users, auth, password_reset, NonTelescopicPipe, telescopic, mildSteelBars, dataManipulation, userProfile, testserv,workorder,metalSquarePipe,woodLogs
 from api.routes.subscription import plan, webhook, subscribe, invoice
 
 # initialize an app
@@ -43,6 +43,7 @@ app.include_router(NonTelescopicPipe.router)
 app.include_router(telescopic.router)
 app.include_router(mildSteelBars.router)
 app.include_router(metalSquarePipe.router)
+app.include_router(woodLogs.router)
 
 app.include_router(testserv.router)
 app.include_router(workorder.router)
